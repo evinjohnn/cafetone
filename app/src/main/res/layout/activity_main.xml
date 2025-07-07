@@ -88,14 +88,31 @@
                         android:src="@drawable/ic_cafe_inactive"
                         app:tint="@color/gray_500" />
 
-                    <TextView
-                        android:id="@+id/tvStatus"
+                    <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Café Mode Inactive"
-                        android:textAppearance="@style/TextAppearance.CaféTone.TitleMedium"
-                        android:textColor="@color/gray_500" />
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/tvStatus"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Café Mode Inactive"
+                            android:textAppearance="@style/TextAppearance.CaféTone.TitleMedium"
+                            android:textColor="@color/gray_500" />
+
+                        <TextView
+                            android:id="@+id/tvStatusSubtitle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="Shizuku setup required"
+                            android:textAppearance="@style/TextAppearance.CaféTone.BodySmall"
+                            android:textColor="@color/orange_500"
+                            android:visibility="gone" />
+
+                    </LinearLayout>
 
                 </LinearLayout>
 
