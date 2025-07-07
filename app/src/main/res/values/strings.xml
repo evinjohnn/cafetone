@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">CaféTone</string>
+    
+    <!-- Main Activity -->
+    <string name="cafe_mode_active">Café Mode Active</string>
+    <string name="cafe_mode_inactive">Café Mode Inactive</string>
+    <string name="controls">Controls</string>
+    <string name="intensity">Intensity</string>
+    <string name="spatial_width">Spatial Width</string>
+    <string name="distance">Distance</string>
+    <string name="settings">Settings</string>
+    <string name="info">Info</string>
+    
+    <!-- Info Dialog -->
+    <string name="about_cafe_mode">About Café Mode</string>
+    <string name="about_cafe_mode_description">Café Mode transforms your audio to sound like it\'s coming from speakers in a distant café.\n\nFeatures:\n• Psychoacoustic distance simulation\n• Spatial audio widening\n• Café-like frequency response\n• Early reflections and room acoustics\n\nAdjust the sliders to fine-tune the effect to your preference.</string>
+    
+    <!-- Permissions -->
+    <string name="permissions_required">Some permissions are required for full functionality</string>
+    <string name="settings_coming_soon">Settings coming soon</string>
+    
+    <!-- Notification -->
+    <string name="notification_channel_name">Café Mode</string>
+    <string name="notification_channel_description">Café Mode audio processing service</string>
+    <string name="notification_title">Café Mode</string>
+    <string name="notification_active">Active</string>
+    <string name="notification_inactive">Inactive</string>
+    <string name="notification_enable">Enable</string>
+    <string name="notification_disable">Disable</string>
+</resources> 

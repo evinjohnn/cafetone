@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Material 3 Light Theme -->
+    <style name="Theme.CaféTone" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Primary Brand Colors -->
+        <item name="colorPrimary">@color/md_theme_light_primary</item>
+        <item name="colorOnPrimary">@color/md_theme_light_onPrimary</item>
+        <item name="colorPrimaryContainer">@color/md_theme_light_primaryContainer</item>
+        <item name="colorOnPrimaryContainer">@color/md_theme_light_onPrimaryContainer</item>
+        
+        <!-- Secondary Brand Colors -->
+        <item name="colorSecondary">@color/md_theme_light_secondary</item>
+        <item name="colorOnSecondary">@color/md_theme_light_onSecondary</item>
+        <item name="colorSecondaryContainer">@color/md_theme_light_secondaryContainer</item>
+        <item name="colorOnSecondaryContainer">@color/md_theme_light_onSecondaryContainer</item>
+        
+        <!-- Tertiary Brand Colors -->
+        <item name="colorTertiary">@color/md_theme_light_tertiary</item>
+        <item name="colorOnTertiary">@color/md_theme_light_onTertiary</item>
+        <item name="colorTertiaryContainer">@color/md_theme_light_tertiaryContainer</item>
+        <item name="colorOnTertiaryContainer">@color/md_theme_light_onTertiaryContainer</item>
+        
+        <!-- Error Colors -->
+        <item name="colorError">@color/md_theme_light_error</item>
+        <item name="colorOnError">@color/md_theme_light_onError</item>
+        <item name="colorErrorContainer">@color/md_theme_light_errorContainer</item>
+        <item name="colorOnErrorContainer">@color/md_theme_light_onErrorContainer</item>
+        
+        <!-- Background Colors -->
+        <item name="android:colorBackground">@color/md_theme_light_background</item>
+        <item name="colorOnBackground">@color/md_theme_light_onBackground</item>
+        
+        <!-- Surface Colors -->
+        <item name="colorSurface">@color/md_theme_light_surface</item>
+        <item name="colorOnSurface">@color/md_theme_light_onSurface</item>
+        <item name="colorSurfaceVariant">@color/md_theme_light_surfaceVariant</item>
+        <item name="colorOnSurfaceVariant">@color/md_theme_light_onSurfaceVariant</item>
+        
+        <!-- Outline Colors -->
+        <item name="colorOutline">@color/md_theme_light_outline</item>
+        <item name="colorOutlineVariant">@color/md_theme_light_outlineVariant</item>
+        
+        <!-- Other Colors -->
+        <item name="android:colorControlHighlight">@color/md_theme_light_primaryContainer</item>
+        <item name="android:textColorPrimary">@color/md_theme_light_onBackground</item>
+        <item name="android:textColorSecondary">@color/md_theme_light_onSurfaceVariant</item>
+        
+        <!-- Material 3 Shape System -->
+        <item name="shapeAppearanceSmallComponent">@style/ShapeAppearance.CaféTone.SmallComponent</item>
+        <item name="shapeAppearanceMediumComponent">@style/ShapeAppearance.CaféTone.MediumComponent</item>
+        <item name="shapeAppearanceLargeComponent">@style/ShapeAppearance.CaféTone.LargeComponent</item>
+        
+        <!-- Typography -->
+        <item name="textAppearanceHeadlineLarge">@style/TextAppearance.CaféTone.HeadlineLarge</item>
+        <item name="textAppearanceHeadlineMedium">@style/TextAppearance.CaféTone.HeadlineMedium</item>
+        <item name="textAppearanceHeadlineSmall">@style/TextAppearance.CaféTone.HeadlineSmall</item>
+        <item name="textAppearanceTitleLarge">@style/TextAppearance.CaféTone.TitleLarge</item>
+        <item name="textAppearanceTitleMedium">@style/TextAppearance.CaféTone.TitleMedium</item>
+        <item name="textAppearanceTitleSmall">@style/TextAppearance.CaféTone.TitleSmall</item>
+        <item name="textAppearanceBodyLarge">@style/TextAppearance.CaféTone.BodyLarge</item>
+        <item name="textAppearanceBodyMedium">@style/TextAppearance.CaféTone.BodyMedium</item>
+        <item name="textAppearanceBodySmall">@style/TextAppearance.CaféTone.BodySmall</item>
+        <item name="textAppearanceLabelLarge">@style/TextAppearance.CaféTone.LabelLarge</item>
+        <item name="textAppearanceLabelMedium">@style/TextAppearance.CaféTone.LabelMedium</item>
+        <item name="textAppearanceLabelSmall">@style/TextAppearance.CaféTone.LabelSmall</item>
+        
+        <!-- Window attributes -->
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+    </style>
+    
+    <!-- Shape Appearances -->
+    <style name="ShapeAppearance.CaféTone.SmallComponent" parent="ShapeAppearance.Material3.SmallComponent">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">12dp</item>
+    </style>
+    
+    <style name="ShapeAppearance.CaféTone.MediumComponent" parent="ShapeAppearance.Material3.MediumComponent">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">16dp</item>
+    </style>
+    
+    <style name="ShapeAppearance.CaféTone.LargeComponent" parent="ShapeAppearance.Material3.LargeComponent">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">24dp</item>
+    </style>
+    
+    <!-- Typography Styles -->
+    <style name="TextAppearance.CaféTone.HeadlineLarge" parent="TextAppearance.Material3.HeadlineLarge">
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:textSize">32sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+    
+    <style name="TextAppearance.CaféTone.HeadlineMedium" parent="TextAppearance.Material3.HeadlineMedium">
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:textSize">28sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+    
+    <style name="TextAppearance.CaféTone.HeadlineSmall" parent="TextAppearance.Material3.HeadlineSmall">
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:textSize">24sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+    
+    <style name="TextAppearance.CaféTone.TitleLarge" parent="TextAppearance.Material3.TitleLarge">
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textSize">22sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+    
+    <style name="TextAppearance.CaféTone.TitleMedium" parent="TextAppearance.Material3.TitleMedium">
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+    
+    <style name="TextAppearance.CaféTone.TitleSmall" parent="TextAppearance.Material3.TitleSmall">
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+    
+    <style name="TextAppearance.CaféTone.BodyLarge" parent="TextAppearance.Material3.BodyLarge">
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:textSize">16sp</item>
+    </style>
+    
+    <style name="TextAppearance.CaféTone.BodyMedium" parent="TextAppearance.Material3.BodyMedium">
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:textSize">14sp</item>
+    </style>
+    
+    <style name="TextAppearance.CaféTone.BodySmall" parent="TextAppearance.Material3.BodySmall">
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:textSize">12sp</item>
+    </style>
+    
+    <style name="TextAppearance.CaféTone.LabelLarge" parent="TextAppearance.Material3.LabelLarge">
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+    
+    <style name="TextAppearance.CaféTone.LabelMedium" parent="TextAppearance.Material3.LabelMedium">
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+    
+    <style name="TextAppearance.CaféTone.LabelSmall" parent="TextAppearance.Material3.LabelSmall">
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textSize">11sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+    
+    <!-- Custom Widget Styles -->
+    <style name="Widget.CaféTone.Switch" parent="Widget.Material3.CompoundButton.Switch">
+        <item name="materialThemeOverlay">@style/ThemeOverlay.CaféTone.Switch</item>
+    </style>
+    
+    <style name="Widget.CaféTone.Slider" parent="Widget.Material3.Slider">
+        <item name="materialThemeOverlay">@style/ThemeOverlay.CaféTone.Slider</item>
+        <item name="trackHeight">6dp</item>
+        <item name="thumbRadius">12dp</item>
+        <item name="haloRadius">20dp</item>
+    </style>
+    
+    <style name="Widget.CaféTone.Button" parent="Widget.Material3.Button">
+        <item name="materialThemeOverlay">@style/ThemeOverlay.CaféTone.Button</item>
+        <item name="android:textAppearance">@style/TextAppearance.CaféTone.LabelLarge</item>
+        <item name="shapeAppearance">@style/ShapeAppearance.CaféTone.MediumComponent</item>
+    </style>
+    
+    <style name="Widget.CaféTone.Card" parent="Widget.Material3.CardView.Elevated">
+        <item name="materialThemeOverlay">@style/ThemeOverlay.CaféTone.Card</item>
+        <item name="shapeAppearance">@style/ShapeAppearance.CaféTone.LargeComponent</item>
+        <item name="cardElevation">8dp</item>
+    </style>
+    
+    <!-- Theme Overlays -->
+    <style name="ThemeOverlay.CaféTone.Switch" parent="">
+        <item name="colorPrimary">@color/cafe_accent</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorPrimaryContainer">@color/cafe_cream</item>
+        <item name="colorOnPrimaryContainer">@color/cafe_brown</item>
+        <item name="colorSecondary">@color/cafe_warm</item>
+    </style>
+    
+    <style name="ThemeOverlay.CaféTone.Slider" parent="">
+        <item name="colorPrimary">@color/cafe_accent</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorPrimaryContainer">@color/cafe_cream</item>
+        <item name="colorOnPrimaryContainer">@color/cafe_brown</item>
+        <item name="colorSecondary">@color/cafe_warm</item>
+    </style>
+    
+    <style name="ThemeOverlay.CaféTone.Button" parent="">
+        <item name="colorPrimary">@color/cafe_accent</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorPrimaryContainer">@color/cafe_cream</item>
+        <item name="colorOnPrimaryContainer">@color/cafe_brown</item>
+    </style>
+    
+    <style name="ThemeOverlay.CaféTone.Card" parent="">
+        <item name="colorSurface">@color/cafe_cream</item>
+        <item name="colorOnSurface">@color/cafe_brown</item>
+        <item name="colorSurfaceVariant">@color/cafe_cream</item>
+        <item name="colorOnSurfaceVariant">@color/cafe_warm</item>
+    </style>
+</resources>
