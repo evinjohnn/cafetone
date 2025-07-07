@@ -187,7 +187,7 @@ class MainActivity : AppCompatActivity() {
         if (isBound) {
             cafeModeService?.let { service ->
                 binding.toggleCafeMode.isChecked = service.isEnabled()
-                updateStatus(service.isEnabled())
+                updateStatus(service.isEnabled(), service.isShizukuReady(), service.getShizukuStatus())
             }
         }
     }
