@@ -112,6 +112,11 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "Settings coming soon", Toast.LENGTH_SHORT).show()
         }
         
+        // Shizuku setup button
+        binding.btnShizukuSetup.setOnClickListener {
+            showShizukuSetupDialog()
+        }
+        
         // Info button
         binding.btnInfo.setOnClickListener {
             showInfoDialog()
