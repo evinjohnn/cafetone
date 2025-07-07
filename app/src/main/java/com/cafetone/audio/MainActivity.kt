@@ -216,15 +216,29 @@ class MainActivity : AppCompatActivity() {
     /**
      * Update status display
      */
-    private fun updateStatus(enabled: Boolean) {
-        if (enabled) {
-            binding.tvStatus.text = "Café Mode Active"
-            binding.tvStatus.setTextColor(ContextCompat.getColor(this, R.color.green_500))
-            binding.ivStatusIcon.setImageResource(R.drawable.ic_cafe_active)
-        } else {
-            binding.tvStatus.text = "Café Mode Inactive"
-            binding.tvStatus.setTextColor(ContextCompat.getColor(this, R.color.gray_500))
-            binding.ivStatusIcon.setImageResource(R.drawable.ic_cafe_inactive)
+    private fun updateStatus(enabled: Boolean, shizukuReady: Boolean = true, shizukuStatus: String = "") {
+        when {
+            !shizukuReady -> {
+                binding.tvStatus.text = "Shizuku Setup Required"
+                binding.tvStatus.setTextColor(ContextCompat.getColor(this, R.color.orange_500))
+                binding.ivStatusIcon.setImageResource(R.drawable.ic_warning)
+                
+                // Show Shizuku status as subtitle
+                binding.tvStatusSubtitle.visibility = View.VISIBLE
+                binding.tvStatusSubtitle.text = shizukuStatus
+            }
+            enabled -> {
+                binding.tvStatus.text = "Café Mode Active"
+                binding.tvStatus.setTextColor(ContextCompat.getColor(this, R.color.green_500))
+                binding.ivStatusIcon.setImageResource(R.drawable.ic_cafe_active)
+                binding.tvStatusSubtitle.visibility = View.GONE
+            }
+            else -> {
+                binding.tvStatus.text = "Café Mode Inactive"
+                binding.tvStatus.setTextColor(ContextCompat.getColor(this, R.color.gray_500))
+                binding.ivStatusIcon.setImageResource(R.drawable.ic_cafe_inactive)
+                binding.tvStatusSubtitle.visibility = View.GONE
+            }
         }
     }
     
