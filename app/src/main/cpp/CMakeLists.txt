@@ -33,23 +33,9 @@ target_include_directories(cafetone-dsp PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-# Compiler flags for optimization
+# Compiler flags for optimization (simplified for debugging)
 target_compile_options(cafetone-dsp PRIVATE
     -O2
-    -ffast-math
-    -DNDEBUG
     -Wall
     -Wextra
-)
-
-# Enable NEON for ARM optimization
-if(ANDROID_ABI STREQUAL "arm64-v8a")
-    target_compile_options(cafetone-dsp PRIVATE -march=armv8-a+simd)
-elseif(ANDROID_ABI STREQUAL "armeabi-v7a")
-    target_compile_options(cafetone-dsp PRIVATE -mfpu=neon -march=armv7-a)
-endif()
-
-# Link time optimization for release builds
-if(CMAKE_BUILD_TYPE STREQUAL "Release")
-    target_compile_options(cafetone-dsp PRIVATE -O3)
-endif() 
+) 
