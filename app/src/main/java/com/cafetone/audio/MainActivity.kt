@@ -175,8 +175,8 @@ class MainActivity : AppCompatActivity() {
             updateSpatialWidthLabel((service.getSpatialWidth() * 100).toInt())
             updateDistanceLabel((service.getDistance() * 100).toInt())
             
-            // Update status
-            updateStatus(service.isEnabled())
+            // Update status including Shizuku status
+            updateStatus(service.isEnabled(), service.isShizukuReady(), service.getShizukuStatus())
         }
     }
     
