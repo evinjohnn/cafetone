@@ -248,6 +248,41 @@ class MainActivity : AppCompatActivity() {
     }
     
     /**
+     * Show Shizuku setup dialog
+     */
+    private fun showShizukuSetupDialog() {
+        val message = """
+            Shizuku Setup Required
+            
+            CaféTone requires Shizuku for system-wide audio processing without root access.
+            
+            Setup Steps:
+            1. Install Shizuku from Google Play Store
+            2. Enable Developer Options on your device
+            3. Enable USB Debugging in Developer Options
+            4. Connect to PC and run: adb shell sh /sdcard/Android/data/moe.shizuku.privileged.api/start.sh
+            5. Or use Wireless Debugging (Android 11+)
+            
+            Once Shizuku is running, restart CaféTone to apply audio effects.
+        """.trimIndent()
+        
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Shizuku Setup")
+            .setMessage(message)
+            .setPositiveButton("Open Play Store") { _, _ ->
+                try {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=moe.shizuku.privileged.api"))
+                    startActivity(intent)
+                } catch (e: Exception) {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=moe.shizuku.privileged.api"))
+                    startActivity(intent)
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+    
+    /**
      * Show information dialog
      */
     private fun showInfoDialog() {
@@ -259,6 +294,11 @@ class MainActivity : AppCompatActivity() {
             • Spatial audio widening
             • Café-like frequency response
             • Early reflections and room acoustics
+            
+            System Requirements:
+            • Shizuku app for system-wide audio processing
+            • Android 7.0+ (API 24+)
+            • Headphones or earbuds for optimal experience
             
             Adjust the sliders to fine-tune the effect to your preference.
         """.trimIndent()
