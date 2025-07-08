@@ -5,6 +5,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
@@ -25,17 +26,26 @@ import com.cafetone.audio.engagement.UserEngagementManager
 import com.cafetone.audio.playstore.PlayStoreIntegration
 import com.cafetone.audio.update.UpdateManager
 import com.cafetone.audio.test.GlobalAudioProcessingTest
+import com.google.firebase.analytics.FirebaseAnalytics
+import com.google.firebase.analytics.ktx.analytics
+import com.google.firebase.analytics.ktx.logEvent
+import com.google.firebase.ktx.Firebase
 
 class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "MainActivity"
         private const val PERMISSION_REQUEST_CODE = 100
+        private const val PREFS_NAME = "cafetone_prefs"
+        private const val KEY_FIRST_LAUNCH = "first_launch"
+        private const val GITHUB_URL = "https://github.com/evinjohnignatious/cafetone"
     }
 
     private lateinit var binding: ActivityMainBinding
     private var cafeModeService: CafeModeService? = null
     private var isBound = false
+    private lateinit var firebaseAnalytics: FirebaseAnalytics
+    private lateinit var sharedPreferences: SharedPreferences
     
     // Advanced features (accessed via service)
     private var analyticsManager: AnalyticsManager? = null
@@ -95,12 +105,27 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        // Initialize Firebase Analytics
+        firebaseAnalytics = Firebase.analytics
+        
+        // Initialize SharedPreferences
+        sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+
         setupEventListeners()
         checkPermissions()
+        
+        // Check for first launch and show GitHub star dialog
+        checkFirstLaunch()
 
         val serviceIntent = Intent(this, CafeModeService::class.java)
         ContextCompat.startForegroundService(this, serviceIntent)
         bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE)
+        
+        // Log app launch event
+        firebaseAnalytics.logEvent("app_launch") {
+            param("version", BuildConfig.VERSION_NAME)
+            param("version_code", BuildConfig.VERSION_CODE.toLong())
+        }
         
         Log.i(TAG, "MainActivity created")
     }
@@ -113,14 +138,71 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun checkFirstLaunch() {
+        val isFirstLaunch = sharedPreferences.getBoolean(KEY_FIRST_LAUNCH, true)
+        
+        if (isFirstLaunch) {
+            showGitHubStarDialog()
+            // Mark as not first launch anymore
+            sharedPreferences.edit().putBoolean(KEY_FIRST_LAUNCH, false).apply()
+            
+            // Log first launch event
+            firebaseAnalytics.logEvent("first_launch") {
+                param("timestamp", System.currentTimeMillis())
+            }
+        }
+    }
+
+    private fun showGitHubStarDialog() {
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Support CaféTone")
+            .setMessage("Enjoying the app? Please consider starring the project on GitHub. It's a free way to show your support!")
+            .setPositiveButton("Star on GitHub") { _, _ ->
+                openGitHubUrl()
+                
+                // Log GitHub star button click
+                firebaseAnalytics.logEvent("github_star_clicked") {
+                    param("source", "first_launch_dialog")
+                }
+            }
+            .setNegativeButton("Maybe Later") { _, _ ->
+                // Log dialog dismissed
+                firebaseAnalytics.logEvent("github_star_dismissed") {
+                    param("source", "first_launch_dialog")
+                }
+            }
+            .setCancelable(false)
+            .show()
+    }
+
+    private fun openGitHubUrl() {
+        try {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(GITHUB_URL))
+            startActivity(intent)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to open GitHub URL", e)
+            Toast.makeText(this, "Failed to open GitHub page", Toast.LENGTH_SHORT).show()
+            
+            // Log error
+            firebaseAnalytics.logEvent("github_open_failed") {
+                param("error", e.message ?: "unknown")
+            }
+        }
+    }
+
     private fun setupEventListeners() {
-        binding.toggleCafeMode.setOnCheckedChangeListener { _, _ ->
+        binding.toggleCafeMode.setOnCheckedChangeListener { _, isChecked ->
             if (binding.toggleCafeMode.isPressed) {
                 cafeModeService?.toggleCafeMode()
                 
-                // Log toggle event
+                // Log cafe mode toggle event to Firebase
+                firebaseAnalytics.logEvent("cafe_mode_toggled") {
+                    param("enabled", isChecked)
+                }
+                
+                // Log toggle event to internal analytics
                 analyticsManager?.logEvent(AnalyticsManager.EVENT_CAFE_MODE_TOGGLE, mapOf(
-                    "enabled" to binding.toggleCafeMode.isChecked
+                    "enabled" to isChecked
                 ))
             }
         }
@@ -129,6 +211,12 @@ class MainActivity : AppCompatActivity() {
             if (fromUser) {
                 cafeModeService?.setIntensity(value / 100f)
                 updateIntensityLabel(value.toInt())
+                
+                // Log slider adjustment to Firebase
+                firebaseAnalytics.logEvent("slider_adjusted") {
+                    param("slider_name", "intensity")
+                    param("slider_value", value.toDouble())
+                }
             }
         }
         
@@ -136,6 +224,12 @@ class MainActivity : AppCompatActivity() {
             if (fromUser) {
                 cafeModeService?.setSpatialWidth(value / 100f)
                 updateSpatialWidthLabel(value.toInt())
+                
+                // Log slider adjustment to Firebase
+                firebaseAnalytics.logEvent("slider_adjusted") {
+                    param("slider_name", "spatial_width")
+                    param("slider_value", value.toDouble())
+                }
             }
         }
         
@@ -143,32 +237,45 @@ class MainActivity : AppCompatActivity() {
             if (fromUser) {
                 cafeModeService?.setDistance(value / 100f)
                 updateDistanceLabel(value.toInt())
+                
+                // Log slider adjustment to Firebase
+                firebaseAnalytics.logEvent("slider_adjusted") {
+                    param("slider_name", "distance")
+                    param("slider_value", value.toDouble())
+                }
             }
         }
 
         binding.btnRefreshStatus.setOnClickListener {
             Toast.makeText(this, "Refreshing Shizuku status...", Toast.LENGTH_SHORT).show()
             cafeModeService?.forceShizukuCheck()
+            
+            // Log refresh action
+            firebaseAnalytics.logEvent("status_refresh_clicked") {}
         }
 
         binding.btnShizukuSetup.setOnClickListener { 
             showShizukuSetupDialog()
+            
+            // Log Shizuku setup button click
+            firebaseAnalytics.logEvent("shizuku_setup_clicked") {}
             analyticsManager?.logEvent(AnalyticsManager.EVENT_SHIZUKU_SETUP, mapOf("manual_trigger" to true))
         }
         
         binding.btnInfo.setOnClickListener { 
             showInfoDialog()
+            
+            // Log about button click
+            firebaseAnalytics.logEvent("about_clicked") {}
             analyticsManager?.logEvent(AnalyticsManager.EVENT_ABOUT_OPENED)
         }
         
         binding.btnSettings.setOnClickListener {
             showSettingsDialog()
+            
+            // Log settings button click
+            firebaseAnalytics.logEvent("settings_clicked") {}
             analyticsManager?.logEvent(AnalyticsManager.EVENT_SETTINGS_OPENED)
-        }
-        
-        // Add test button for global processing validation
-        binding.btnTestGlobalProcessing?.setOnClickListener {
-            runGlobalProcessingTests()
         }
     }
 
@@ -280,6 +387,14 @@ class MainActivity : AppCompatActivity() {
             .setNeutralButton("Share App") { _, _ ->
                 engagementManager?.shareApp()
             }
+            .setNegativeButton("Star on GitHub") { _, _ ->
+                openGitHubUrl()
+                
+                // Log GitHub star button click from about dialog
+                firebaseAnalytics.logEvent("github_star_clicked") {
+                    param("source", "about_dialog")
+                }
+            }
             .show()
     }
 
@@ -336,9 +451,12 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "Failed to share", Toast.LENGTH_SHORT).show()
         }
     }
-    
+
     private fun runGlobalProcessingTests() {
         Toast.makeText(this, "Running global audio processing tests...", Toast.LENGTH_SHORT).show()
+        
+        // Log test execution
+        firebaseAnalytics.logEvent("global_processing_test_started") {}
         
         Thread {
             val testSuite = GlobalAudioProcessingTest(this)
@@ -353,6 +471,12 @@ class MainActivity : AppCompatActivity() {
     private fun showTestResults(results: GlobalAudioProcessingTest.TestResults) {
         val statusIcon = if (results.overallSuccessRate >= 80.0f) "✅" else "⚠️"
         val status = if (results.overallSuccessRate >= 80.0f) "READY" else "NEEDS SETUP"
+        
+        // Log test results
+        firebaseAnalytics.logEvent("global_processing_test_completed") {
+            param("success_rate", results.overallSuccessRate.toDouble())
+            param("status", status)
+        }
         
         androidx.appcompat.app.AlertDialog.Builder(this)
             .setTitle("$statusIcon Global Processing Test Results")
@@ -388,9 +512,19 @@ class MainActivity : AppCompatActivity() {
             if (allGranted) {
                 Log.i(TAG, "All permissions granted")
                 Toast.makeText(this, "Permissions granted! CaféTone is ready.", Toast.LENGTH_SHORT).show()
+                
+                // Log permissions granted
+                firebaseAnalytics.logEvent("permissions_granted") {
+                    param("count", permissions.size.toLong())
+                }
             } else {
                 Log.w(TAG, "Some permissions denied")
                 Toast.makeText(this, "Some permissions denied. App may not work properly.", Toast.LENGTH_LONG).show()
+                
+                // Log permissions denied
+                firebaseAnalytics.logEvent("permissions_denied") {
+                    param("denied_count", grantResults.count { it != PackageManager.PERMISSION_GRANTED }.toLong())
+                }
             }
         }
     }
