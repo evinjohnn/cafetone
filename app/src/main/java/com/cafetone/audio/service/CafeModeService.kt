@@ -167,6 +167,40 @@ class CafeModeService : Service() {
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.MODIFY_AUDIO_SETTINGS) != PackageManager.PERMISSION_GRANTED) return
 
         try {
+            // Setup global audio effect for system-wide processing
+            setupGlobalAudioEffect()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error setting up global audio effect", e)
+            analyticsManager.trackCrash(e, "Global AudioEffect Setup")
+            // Fallback to app-specific effects
+            setupFallbackAudioEffect()
+        }
+    }
+
+    private fun setupGlobalAudioEffect() {
+        try {
+            // USE GLOBAL SESSION (0) - This intercepts ALL audio streams
+            audioEffect = AudioEffect(
+                EFFECT_UUID_CAFETONE,           // Our Sony DSP effect
+                AudioEffect.EFFECT_TYPE_NULL,   // Base type
+                0,                              // Priority
+                0                               // Session 0 = GLOBAL (KEY CHANGE!)
+            )
+            
+            audioEffect?.let {
+                it.enabled = isEnabled
+                setAllParams()
+                Log.i(TAG, "Global AudioEffect enabled - processing ALL apps")
+            } ?: throw Exception("Failed to create global AudioEffect")
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to create global AudioEffect", e)
+            throw e
+        }
+    }
+    
+    private fun setupFallbackAudioEffect() {
+        try {
             val descriptors = AudioEffect.queryEffects()
             val cafeToneDescriptor = descriptors?.find { it.uuid == EFFECT_UUID_CAFETONE }
             audioEffect = cafeToneDescriptor?.let { createAudioEffect(it.type, it.uuid) }
@@ -175,11 +209,11 @@ class CafeModeService : Service() {
             audioEffect?.let {
                 it.enabled = isEnabled
                 setAllParams()
-                Log.i(TAG, "AudioEffect created and configured")
-            } ?: Log.e(TAG, "Failed to create any AudioEffect")
+                Log.i(TAG, "Fallback AudioEffect created and configured")
+            } ?: Log.e(TAG, "Failed to create fallback AudioEffect")
         } catch (e: Exception) {
-            Log.e(TAG, "Error setting up audio effect", e)
-            analyticsManager.trackCrash(e, "AudioEffect Setup")
+            Log.e(TAG, "Error setting up fallback audio effect", e)
+            analyticsManager.trackCrash(e, "Fallback AudioEffect Setup")
         }
     }
 
