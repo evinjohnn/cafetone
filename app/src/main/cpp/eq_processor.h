@@ -40,7 +40,7 @@ private:
     bool m_cafeEQEnabled;
     float m_distanceEQ;
     
-    // Café EQ bands (simulating distant speaker response)
+    // Sony Café EQ bands (exact specifications)
     struct EQBand {
         float frequency;
         float gain;
@@ -50,11 +50,15 @@ private:
     static const int NUM_EQ_BANDS = 5;
     EQBand m_eqBands[NUM_EQ_BANDS];
     
+    // Sony-specific processing methods
+    float applySonyCafeEQ(float sample);
+    float applyDistanceEQ(float sample);
+    
     // Utility functions
     void updateHighPassCoeffs();
     void updateLowPassCoeffs();
-    void setupCafeEQ();
+    void setupSonyCafeEQ();
     float processFilter(float input, float* coeffs, float* state);
 };
 
-#endif // EQ_PROCESSOR_H 
+#endif // EQ_PROCESSOR_H

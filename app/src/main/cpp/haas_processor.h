@@ -27,18 +27,19 @@ public:
     void setBalance(float balance);
     
 private:
-    // Delay line for Haas effect
-    static const int MAX_DELAY_SAMPLES = 1024;
+    // Delay line for Haas effect and Sony rear positioning
+    static const int MAX_DELAY_SAMPLES = 2048; // Extended for 20ms+ delays
     float m_delayBuffer[2][MAX_DELAY_SAMPLES];
     int m_delayIndex[2];
     
     // Parameters
-    float m_delayAmount;  // Delay in milliseconds (0-15ms)
+    float m_delayAmount;  // Base delay amount (0-25ms)
     float m_width;        // Stereo width (0.0-1.0)
     float m_balance;      // Left/right balance (-1.0 to 1.0)
     
-    // Computed values
-    int m_delaySamples;
+    // Sony-specific delay values
+    int m_leftDelaySamples;   // L+20ms
+    int m_rightDelaySamples;  // R+18ms
     float m_delayCoeff;
     
     // Utility functions
@@ -46,4 +47,4 @@ private:
     void clearDelayBuffer();
 };
 
-#endif // HAAS_PROCESSOR_H 
+#endif // HAAS_PROCESSOR_H
