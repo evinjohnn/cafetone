@@ -48,36 +48,49 @@ class UpdateManager(private val context: Context) {
     private val remoteConfig: FirebaseRemoteConfig = Firebase.remoteConfig
     private val prefs = context.getSharedPreferences(PREFS_UPDATE, Context.MODE_PRIVATE)
     
+    init {
+        setupRemoteConfig()
+    }
+
+    private fun setupRemoteConfig() {
+        val configSettings = remoteConfigSettings {
+            minimumFetchIntervalInSeconds = 3600 // 1 hour for production, can be 0 for debug
+        }
+        
+        remoteConfig.setConfigSettingsAsync(configSettings)
+        
+        // Set default values
+        val defaults = mapOf(
+            KEY_FORCE_UPDATE_VERSION to 0L,
+            KEY_RECOMMENDED_UPDATE_VERSION to 0L,
+            KEY_UPDATE_TITLE to "Update Available",
+            KEY_UPDATE_MESSAGE to "A new version of CaféTone is available with exciting improvements!",
+            KEY_UPDATE_FEATURES to "• Enhanced audio processing\n• Improved performance\n• Bug fixes",
+            KEY_ENABLE_UPDATE_NOTIFICATIONS to true,
+            KEY_UPDATE_CHECK_INTERVAL_HOURS to 24L
+        )
+        
+        remoteConfig.setDefaultsAsync(defaults)
+    }
+
     /**
-     * Initialize update manager
+     * Initialize update checking and fetch remote config
      */
     fun initialize() {
-        val currentVersion = getCurrentAppVersion()
-        val lastVersion = preferences.getString(KEY_CURRENT_VERSION, null)
-        
-        // Check if app was updated
-        if (lastVersion != null && lastVersion != currentVersion) {
-            handleAppUpdate(lastVersion, currentVersion)
-        }
-        
-        // Store current version
-        preferences.edit().putString(KEY_CURRENT_VERSION, currentVersion).apply()
-        
-        Log.i(TAG, "Update manager initialized - version: $currentVersion")
+        fetchRemoteConfig()
+        schedulePeriodicUpdateCheck()
     }
-    
-    /**
-     * Handle app update (show changelog, etc.)
-     */
-    private fun handleAppUpdate(oldVersion: String, newVersion: String) {
-        Log.i(TAG, "App updated from $oldVersion to $newVersion")
-        
-        // Show changelog if not already shown for this version
-        val changelogKey = "${KEY_CHANGELOG_SHOWN}_$newVersion"
-        if (!preferences.getBoolean(changelogKey, false)) {
-            showChangelogDialog(oldVersion, newVersion)
-            preferences.edit().putBoolean(changelogKey, true).apply()
-        }
+
+    private fun fetchRemoteConfig() {
+        remoteConfig.fetchAndActivate()
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    Log.d(TAG, "Remote config fetched successfully")
+                    checkForUpdatesWithRemoteConfig()
+                } else {
+                    Log.e(TAG, "Failed to fetch remote config", task.exception)
+                }
+            }
     }
     
     /**
