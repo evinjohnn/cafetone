@@ -197,6 +197,7 @@ class CafeModeService : Service() {
     override fun onDestroy() {
         releaseAudioEffect()
         releaseCafeModeDSP()
+        releaseGlobalAudioProcessing()
         shizukuIntegration.cleanup()
         super.onDestroy()
     }
@@ -205,6 +206,13 @@ class CafeModeService : Service() {
         cafeModeDSP?.release()
         cafeModeDSP = null
         Log.i(TAG, "Sony Café Mode DSP released")
+    }
+    
+    private fun releaseGlobalAudioProcessing() {
+        audioPolicyManager?.stopGlobalAudioInterception()
+        audioPolicyManager?.cleanup()
+        audioPolicyManager = null
+        Log.i(TAG, "Global audio processing released")
     }
 
     private fun setupAudioEffect() {
