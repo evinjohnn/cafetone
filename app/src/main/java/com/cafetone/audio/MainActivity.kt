@@ -20,6 +20,10 @@ import androidx.lifecycle.Observer
 import com.cafetone.audio.databinding.ActivityMainBinding
 import com.cafetone.audio.service.AppStatus
 import com.cafetone.audio.service.CafeModeService
+import com.cafetone.audio.analytics.AnalyticsManager
+import com.cafetone.audio.engagement.UserEngagementManager
+import com.cafetone.audio.playstore.PlayStoreIntegration
+import com.cafetone.audio.update.UpdateManager
 
 class MainActivity : AppCompatActivity() {
 
@@ -31,6 +35,12 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private var cafeModeService: CafeModeService? = null
     private var isBound = false
+    
+    // Advanced features (accessed via service)
+    private var analyticsManager: AnalyticsManager? = null
+    private var engagementManager: UserEngagementManager? = null
+    private var playStoreIntegration: PlayStoreIntegration? = null
+    private var updateManager: UpdateManager? = null
 
     // Observer for the service status
     private val statusObserver = Observer<AppStatus> { status ->
@@ -46,13 +56,34 @@ class MainActivity : AppCompatActivity() {
             isBound = true
             Log.i(TAG, "Service connected")
 
+            // Access advanced features through service
+            analyticsManager = cafeModeService?.getAnalyticsManager()
+            engagementManager = cafeModeService?.getEngagementManager()
+            playStoreIntegration = cafeModeService?.getPlayStoreIntegration()
+            updateManager = cafeModeService?.getUpdateManager()
+
             cafeModeService?.status?.observe(this@MainActivity, statusObserver)
             updateSliderUI()
+            
+            // Show first-time tutorial if needed
+            engagementManager?.showFirstTimeTutorial()
+            
+            // Check for app updates
+            updateManager?.checkForUpdates(this@MainActivity)
+            
+            // Request review if appropriate
+            playStoreIntegration?.requestReviewIfAppropriate(this@MainActivity)
+            
+            Log.i(TAG, "Advanced features initialized")
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
             cafeModeService?.status?.removeObserver(statusObserver)
             cafeModeService = null
+            analyticsManager = null
+            engagementManager = null
+            playStoreIntegration = null
+            updateManager = null
             isBound = false
             Log.i(TAG, "Service disconnected")
         }
@@ -69,6 +100,8 @@ class MainActivity : AppCompatActivity() {
         val serviceIntent = Intent(this, CafeModeService::class.java)
         ContextCompat.startForegroundService(this, serviceIntent)
         bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE)
+        
+        Log.i(TAG, "MainActivity created")
     }
 
     override fun onDestroy() {
@@ -83,6 +116,11 @@ class MainActivity : AppCompatActivity() {
         binding.toggleCafeMode.setOnCheckedChangeListener { _, _ ->
             if (binding.toggleCafeMode.isPressed) {
                 cafeModeService?.toggleCafeMode()
+                
+                // Log toggle event
+                analyticsManager?.logEvent(AnalyticsManager.EVENT_CAFE_MODE_TOGGLE, mapOf(
+                    "enabled" to binding.toggleCafeMode.isChecked
+                ))
             }
         }
 
@@ -92,12 +130,14 @@ class MainActivity : AppCompatActivity() {
                 updateIntensityLabel(value.toInt())
             }
         }
+        
         binding.sliderSpatialWidth.addOnChangeListener { _, value, fromUser ->
             if (fromUser) {
                 cafeModeService?.setSpatialWidth(value / 100f)
                 updateSpatialWidthLabel(value.toInt())
             }
         }
+        
         binding.sliderDistance.addOnChangeListener { _, value, fromUser ->
             if (fromUser) {
                 cafeModeService?.setDistance(value / 100f)
@@ -110,10 +150,19 @@ class MainActivity : AppCompatActivity() {
             cafeModeService?.forceShizukuCheck()
         }
 
-        binding.btnShizukuSetup.setOnClickListener { showShizukuSetupDialog() }
-        binding.btnInfo.setOnClickListener { showInfoDialog() }
+        binding.btnShizukuSetup.setOnClickListener { 
+            showShizukuSetupDialog()
+            analyticsManager?.logEvent(AnalyticsManager.EVENT_SHIZUKU_SETUP, mapOf("manual_trigger" to true))
+        }
+        
+        binding.btnInfo.setOnClickListener { 
+            showInfoDialog()
+            analyticsManager?.logEvent(AnalyticsManager.EVENT_ABOUT_OPENED)
+        }
+        
         binding.btnSettings.setOnClickListener {
-            Toast.makeText(this, "Settings coming soon", Toast.LENGTH_SHORT).show()
+            showSettingsDialog()
+            analyticsManager?.logEvent(AnalyticsManager.EVENT_SETTINGS_OPENED)
         }
     }
 
@@ -151,9 +200,12 @@ class MainActivity : AppCompatActivity() {
                 binding.ivStatusIcon.setImageResource(R.drawable.ic_warning)
                 binding.tvStatusSubtitle.visibility = View.VISIBLE
                 binding.tvStatusSubtitle.text = status.shizukuMessage
+                
+                // Show Shizuku tutorial if not ready
+                engagementManager?.showShizukuTutorial()
             }
             status.isEnabled -> {
-                binding.tvStatus.text = "Café Mode Active"
+                binding.tvStatus.text = "Sony Café Mode Active"
                 binding.tvStatus.setTextColor(ContextCompat.getColor(this, R.color.green_500))
                 binding.ivStatusIcon.setImageResource(R.drawable.ic_cafe_active)
                 binding.tvStatusSubtitle.visibility = View.GONE
@@ -188,7 +240,11 @@ class MainActivity : AppCompatActivity() {
     private fun showShizukuSetupDialog() {
         androidx.appcompat.app.AlertDialog.Builder(this)
             .setTitle("Shizuku Setup")
-            .setMessage("CaféTone requires Shizuku for system-wide audio processing. Please install and start the Shizuku service.")
+            .setMessage("""
+                CaféTone requires Shizuku for system-wide audio processing. Please install and start the Shizuku service.
+                
+                This enables Sony Café Mode to work with all your apps like Spotify, YouTube Music, etc.
+            """.trimIndent())
             .setPositiveButton("Open Play Store") { _, _ ->
                 try {
                     startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=moe.shizuku.privileged.api")))
@@ -201,10 +257,92 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showInfoDialog() {
+        val dspInfo = cafeModeService?.getCafeModeDSP()?.getStatusInfo() ?: "DSP Not Available"
+        
         androidx.appcompat.app.AlertDialog.Builder(this)
-            .setTitle("About Café Mode")
-            .setMessage("Café Mode transforms your audio to sound like it's coming from speakers in a distant café.")
+            .setTitle("About Sony Café Mode")
+            .setMessage("""
+                CaféTone transforms your audio to sound like it's coming from speakers in a distant café using Sony's advanced audio processing technology.
+                
+                $dspInfo
+                
+                Perfect for background listening while working, studying, or relaxing.
+                
+                Developed with love for audio enthusiasts 🎵☕
+            """.trimIndent())
             .setPositiveButton("OK", null)
+            .setNeutralButton("Share App") { _, _ ->
+                engagementManager?.shareApp()
+            }
             .show()
+    }
+
+    private fun showSettingsDialog() {
+        val usageStats = analyticsManager?.getUsageStatistics()
+        val engagementStats = engagementManager?.getEngagementStats()
+        
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("CaféTone Settings")
+            .setMessage("""
+                Usage Statistics:
+                • Total App Launches: ${usageStats?.totalLaunches ?: 0}
+                • Café Mode Uses: ${engagementStats?.cafeModeUses ?: 0}
+                • Days Since Install: ${usageStats?.daysSinceFirstLaunch ?: 0}
+                
+                Advanced Features:
+                • Tutorial Completed: ${if (engagementStats?.tutorialCompleted == true) "Yes" else "No"}
+                • Achievements: ${getAchievementCount(engagementStats)}
+                
+                App Version: ${usageStats?.appVersion ?: "Unknown"}
+            """.trimIndent())
+            .setPositiveButton("Close", null)
+            .setNeutralButton("Rate App") { _, _ ->
+                playStoreIntegration?.showReviewRequest(this)
+            }
+            .setNegativeButton("Share Stats") { _, _ ->
+                val stats = engagementManager?.exportUserStats() ?: "No stats available"
+                shareText("My CaféTone Statistics", stats)
+            }
+            .show()
+    }
+    
+    private fun getAchievementCount(stats: com.cafetone.audio.engagement.EngagementStats?): String {
+        if (stats == null) return "0"
+        
+        val achievements = mutableListOf<String>()
+        if (stats.milestone5Uses) achievements.add("Café Enthusiast")
+        if (stats.milestone25Uses) achievements.add("Café Regular")  
+        if (stats.milestone100Uses) achievements.add("Café Master")
+        
+        return if (achievements.isEmpty()) "None yet" else achievements.joinToString(", ")
+    }
+    
+    private fun shareText(title: String, text: String) {
+        try {
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_TEXT, text)
+                putExtra(Intent.EXTRA_SUBJECT, title)
+            }
+            startActivity(Intent.createChooser(intent, title))
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to share text", e)
+            Toast.makeText(this, "Failed to share", Toast.LENGTH_SHORT).show()
+        }
+    }
+    
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        
+        if (requestCode == PERMISSION_REQUEST_CODE) {
+            val allGranted = grantResults.all { it == PackageManager.PERMISSION_GRANTED }
+            if (allGranted) {
+                Log.i(TAG, "All permissions granted")
+                Toast.makeText(this, "Permissions granted! CaféTone is ready.", Toast.LENGTH_SHORT).show()
+            } else {
+                Log.w(TAG, "Some permissions denied")
+                Toast.makeText(this, "Some permissions denied. App may not work properly.", Toast.LENGTH_LONG).show()
+            }
+        }
     }
 }
