@@ -232,64 +232,79 @@ class UpdateManager(private val context: Context) {
         }
     }
     
-    /**
-     * Get current app version
-     */
-    private fun getCurrentAppVersion(): String {
-        return try {
-            val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
-            packageInfo.versionName ?: "Unknown"
+    private fun openPlayStore(activity: Activity) {
+        try {
+            val playStoreIntent = Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=${context.packageName}"))
+            activity.startActivity(playStoreIntent)
         } catch (e: Exception) {
-            "Unknown"
+            // Fallback to web browser
+            val webIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=${context.packageName}"))
+            activity.startActivity(webIntent)
         }
     }
-    
+
     /**
-     * Get update preferences
+     * Handle update result from Activity
      */
-    fun getUpdatePreferences(): UpdatePreferences {
-        return UpdatePreferences(
-            autoUpdateEnabled = preferences.getBoolean(KEY_AUTO_UPDATE_ENABLED, false),
-            lastUpdateCheck = preferences.getLong(KEY_LAST_UPDATE_CHECK, 0),
-            currentVersion = preferences.getString(KEY_CURRENT_VERSION, "Unknown") ?: "Unknown"
-        )
+    fun handleUpdateResult(requestCode: Int, resultCode: Int) {
+        if (requestCode == UPDATE_REQUEST_CODE) {
+            when (resultCode) {
+                Activity.RESULT_OK -> {
+                    Log.i(TAG, "Update flow completed successfully")
+                }
+                Activity.RESULT_CANCELED -> {
+                    Log.i(TAG, "Update flow cancelled by user")
+                }
+                else -> {
+                    Log.w(TAG, "Update flow completed with result: $resultCode")
+                }
+            }
+        }
     }
-    
+
     /**
-     * Reset update preferences (for testing)
+     * Enable or disable update notifications
      */
-    fun resetUpdatePreferences() {
-        preferences.edit().clear().apply()
-        Log.i(TAG, "Update preferences reset")
+    fun setUpdateNotificationsEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_UPDATE_NOTIFICATION_ENABLED, enabled).apply()
+        Log.i(TAG, "Update notifications ${if (enabled) "enabled" else "disabled"}")
+    }
+
+    /**
+     * Get update notification preference
+     */
+    fun areUpdateNotificationsEnabled(): Boolean {
+        return prefs.getBoolean(KEY_UPDATE_NOTIFICATION_ENABLED, true)
+    }
+
+    /**
+     * Force refresh remote config and check for updates
+     */
+    fun forceRefresh(activity: Activity) {
+        remoteConfig.fetch(0) // Fetch immediately
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    remoteConfig.activate()
+                    checkForUpdates(activity)
+                } else {
+                    Log.e(TAG, "Failed to force refresh remote config", task.exception)
+                }
+            }
+    }
+
+    /**
+     * Get current update status
+     */
+    fun getUpdateStatus(): String {
+        val currentVersion = BuildConfig.VERSION_CODE.toLong()
+        val forceUpdateVersion = remoteConfig.getLong(KEY_FORCE_UPDATE_VERSION)
+        val recommendedUpdateVersion = remoteConfig.getLong(KEY_RECOMMENDED_UPDATE_VERSION)
+        val lastCheck = prefs.getLong(KEY_LAST_UPDATE_CHECK, 0)
+        
+        return when {
+            currentVersion < forceUpdateVersion -> "Force Update Required"
+            currentVersion < recommendedUpdateVersion -> "Update Recommended"
+            else -> "Up to Date (last checked: ${if (lastCheck > 0) java.text.SimpleDateFormat("MM/dd HH:mm").format(lastCheck) else "Never"})"
+        }
     }
 }
-
-/**
- * Update information data class
- */
-data class UpdateInfo(
-    val versionName: String,
-    val versionCode: Int,
-    val updateType: String,
-    val releaseDate: String,
-    val downloadUrl: String,
-    val changelog: String,
-    val priority: UpdatePriority,
-    val forceUpdate: Boolean
-)
-
-/**
- * Update priority enum
- */
-enum class UpdatePriority {
-    LOW, NORMAL, HIGH, CRITICAL
-}
-
-/**
- * Update preferences data class
- */
-data class UpdatePreferences(
-    val autoUpdateEnabled: Boolean,
-    val lastUpdateCheck: Long,
-    val currentVersion: String
-)
