@@ -159,101 +159,77 @@ class UpdateManager(private val context: Context) {
         prefs.edit().putLong(KEY_LAST_UPDATE_CHECK, System.currentTimeMillis()).apply()
     }
     
-    /**
-     * Show update notification dialog
-     */
-    fun showUpdateDialog(updateInfo: UpdateInfo) {
-        val title = when (updateInfo.updateType) {
-            UPDATE_TYPE_MAJOR -> "Major Update Available! 🚀"
-            UPDATE_TYPE_MINOR -> "New Update Available! ✨"
-            UPDATE_TYPE_PATCH -> "Update Available 🔧"
-            else -> "Update Available"
+    private fun startImmediateUpdate(activity: Activity, appUpdateInfo: AppUpdateInfo) {
+        try {
+            appUpdateManager.startUpdateFlowForResult(
+                appUpdateInfo,
+                AppUpdateType.IMMEDIATE,
+                activity,
+                UPDATE_REQUEST_CODE
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to start immediate update", e)
         }
+    }
+
+    private fun showUpdateDialog(activity: Activity, appUpdateInfo: AppUpdateInfo) {
+        val title = remoteConfig.getString(KEY_UPDATE_TITLE)
+        val message = remoteConfig.getString(KEY_UPDATE_MESSAGE)
+        val features = remoteConfig.getString(KEY_UPDATE_FEATURES)
         
-        AlertDialog.Builder(context)
+        AlertDialog.Builder(activity)
             .setTitle(title)
-            .setMessage("""
-                CaféTone ${updateInfo.versionName} is now available!
-                
-                ${updateInfo.changelog}
-                
-                Release Date: ${updateInfo.releaseDate}
-            """.trimIndent())
+            .setMessage("$message\n\n🎵 What's New:\n$features")
             .setPositiveButton("Update Now") { _, _ ->
-                openPlayStoreForUpdate()
+                startFlexibleUpdate(activity, appUpdateInfo)
             }
             .setNegativeButton("Later") { _, _ ->
-                // Mark as dismissed for this session
-                preferences.edit().putBoolean(KEY_UPDATE_DISMISSED, true).apply()
+                // User dismissed update
+                val recommendedVersion = remoteConfig.getLong(KEY_RECOMMENDED_UPDATE_VERSION)
+                prefs.edit().putLong(KEY_DISMISSED_VERSION, recommendedVersion).apply()
             }
-            .setNeutralButton("Auto-Update") { _, _ ->
-                enableAutoUpdates()
-                openPlayStoreForUpdate()
-            }
+            .setCancelable(false)
             .show()
+    }
+
+    private fun startFlexibleUpdate(activity: Activity, appUpdateInfo: AppUpdateInfo) {
+        try {
+            appUpdateManager.startUpdateFlowForResult(
+                appUpdateInfo,
+                AppUpdateType.FLEXIBLE,
+                activity,
+                UPDATE_REQUEST_CODE
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to start flexible update", e)
+            // Fallback to Play Store
+            openPlayStore(activity)
+        }
+    }
+
+    private fun showRecommendedUpdateNotification() {
+        if (!remoteConfig.getBoolean(KEY_ENABLE_UPDATE_NOTIFICATIONS)) {
+            return
+        }
         
-        Log.i(TAG, "Update dialog shown for version ${updateInfo.versionName}")
-    }
-    
-    /**
-     * Open Play Store for update
-     */
-    private fun openPlayStoreForUpdate() {
-        try {
-            val intent = Intent(Intent.ACTION_VIEW).apply {
-                data = Uri.parse("market://details?id=${context.packageName}")
-                setPackage("com.android.vending")
-            }
-            context.startActivity(intent)
-            Log.i(TAG, "Opened Play Store for update")
-        } catch (e: Exception) {
-            // Fallback to web browser
-            try {
-                val intent = Intent(Intent.ACTION_VIEW).apply {
-                    data = Uri.parse("https://play.google.com/store/apps/details?id=${context.packageName}")
-                }
-                context.startActivity(intent)
-                Log.i(TAG, "Opened Play Store web for update")
-            } catch (e2: Exception) {
-                Log.e(TAG, "Failed to open Play Store for update", e2)
-            }
+        val notificationEnabled = prefs.getBoolean(KEY_UPDATE_NOTIFICATION_ENABLED, true)
+        if (!notificationEnabled) {
+            return
         }
+        
+        Log.i(TAG, "Recommended update notification would be shown here")
+        // This will be handled by FCM when the notification is sent from server
     }
-    
-    /**
-     * Share update announcement
-     */
-    private fun shareUpdate(version: String, changelog: String) {
-        try {
-            val shareText = """
-                CaféTone $version is out! 🎉
-                
-                $changelog
-                
-                Get the update: https://play.google.com/store/apps/details?id=${context.packageName}
-                
-                #CaféTone #AppUpdate #AudioExperience
-            """.trimIndent()
-            
-            val intent = Intent(Intent.ACTION_SEND).apply {
-                type = "text/plain"
-                putExtra(Intent.EXTRA_TEXT, shareText)
-                putExtra(Intent.EXTRA_SUBJECT, "CaféTone $version Update")
-            }
-            
-            context.startActivity(Intent.createChooser(intent, "Share Update"))
-            Log.i(TAG, "Update shared for version $version")
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to share update", e)
+
+    private fun schedulePeriodicUpdateCheck() {
+        val lastCheck = prefs.getLong(KEY_LAST_UPDATE_CHECK, 0)
+        val intervalHours = remoteConfig.getLong(KEY_UPDATE_CHECK_INTERVAL_HOURS)
+        val intervalMs = intervalHours * 60 * 60 * 1000
+        
+        if (System.currentTimeMillis() - lastCheck > intervalMs) {
+            Log.d(TAG, "Scheduled update check triggered")
+            checkForUpdatesWithRemoteConfig()
         }
-    }
-    
-    /**
-     * Enable auto-updates preference
-     */
-    private fun enableAutoUpdates() {
-        preferences.edit().putBoolean(KEY_AUTO_UPDATE_ENABLED, true).apply()
-        Log.i(TAG, "Auto-updates enabled")
     }
     
     /**
