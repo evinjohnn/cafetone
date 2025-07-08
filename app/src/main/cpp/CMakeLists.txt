@@ -24,6 +24,7 @@ add_library(cafetone-dsp SHARED
         haas_processor.cpp
         eq_processor.cpp
         reverb_processor.cpp
+        dynamic_processor.cpp
 )
 
 # Link libraries
