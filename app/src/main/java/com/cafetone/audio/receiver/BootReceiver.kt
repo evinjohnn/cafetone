@@ -4,7 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
-import com.cafetone.audio.service.CafeModeService
+import com.cafetone.audio.service.CafeModeService // <-- IMPORT ADDED
 
 class BootReceiver : BroadcastReceiver() {
 

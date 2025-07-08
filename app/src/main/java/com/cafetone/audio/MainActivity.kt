@@ -15,225 +15,119 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.Observer
 import com.cafetone.audio.databinding.ActivityMainBinding
+import com.cafetone.audio.service.AppStatus
 import com.cafetone.audio.service.CafeModeService
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
-    
+
     companion object {
         private const val TAG = "MainActivity"
         private const val PERMISSION_REQUEST_CODE = 100
     }
-    
+
     private lateinit var binding: ActivityMainBinding
     private var cafeModeService: CafeModeService? = null
     private var isBound = false
-    
+
+    // Observer for the service status
+    private val statusObserver = Observer<AppStatus> { status ->
+        updateStatusUI(status)
+    }
+
     private val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
             val binder = service as CafeModeService.LocalBinder
             cafeModeService = binder.getService()
             isBound = true
             Log.i(TAG, "Service connected")
-            updateUI()
+
+            // Start observing the status
+            cafeModeService?.status?.observe(this@MainActivity, statusObserver)
+
+            // Update sliders to match service state
+            updateSliderUI()
         }
-        
+
         override fun onServiceDisconnected(name: ComponentName?) {
+            // Stop observing
+            cafeModeService?.status?.removeObserver(statusObserver)
             cafeModeService = null
             isBound = false
             Log.i(TAG, "Service disconnected")
         }
     }
-    
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        
-        setupUI()
+
+        setupEventListeners()
         checkPermissions()
+
+        // Start and bind to the service
+        val serviceIntent = Intent(this, CafeModeService::class.java)
+        ContextCompat.startForegroundService(this, serviceIntent)
+        bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE)
     }
-    
-    override fun onStart() {
-        super.onStart()
-        bindService()
-    }
-    
-    override fun onStop() {
-        super.onStop()
-        unbindService()
-    }
-    
-    /**
-     * Setup UI components and event listeners
-     */
-    private fun setupUI() {
-        // Master toggle
-        binding.toggleCafeMode.setOnCheckedChangeListener { _, isChecked ->
-            if (isBound) {
-                cafeModeService?.let { service ->
-                    if (isChecked != service.isEnabled()) {
-                        service.toggleCafeMode()
-                        updateToggleState()
-                    }
-                }
-            }
-        }
-        
-        // Intensity slider
-        binding.sliderIntensity.addOnChangeListener { _, value, fromUser ->
-            if (fromUser && isBound) {
-                cafeModeService?.setIntensity(value / 100f)
-                updateIntensityLabel(value.toInt())
-            }
-        }
-        
-        // Spatial width slider
-        binding.sliderSpatialWidth.addOnChangeListener { _, value, fromUser ->
-            if (fromUser && isBound) {
-                cafeModeService?.setSpatialWidth(value / 100f)
-                updateSpatialWidthLabel(value.toInt())
-            }
-        }
-        
-        // Distance slider
-        binding.sliderDistance.addOnChangeListener { _, value, fromUser ->
-            if (fromUser && isBound) {
-                cafeModeService?.setDistance(value / 100f)
-                updateDistanceLabel(value.toInt())
-            }
-        }
-        
-        // Settings button
-        binding.btnSettings.setOnClickListener {
-            // TODO: Open settings activity
-            Toast.makeText(this, "Settings coming soon", Toast.LENGTH_SHORT).show()
-        }
-        
-        // Shizuku setup button
-        binding.btnShizukuSetup.setOnClickListener {
-            showShizukuSetupDialog()
-        }
-        
-        // Info button
-        binding.btnInfo.setOnClickListener {
-            showInfoDialog()
-        }
-    }
-    
-    /**
-     * Check and request necessary permissions
-     */
-    private fun checkPermissions() {
-        val permissions = arrayOf(
-            Manifest.permission.RECORD_AUDIO,
-            Manifest.permission.MODIFY_AUDIO_SETTINGS,
-            Manifest.permission.POST_NOTIFICATIONS
-        )
-        
-        val permissionsToRequest = permissions.filter {
-            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
-        }.toTypedArray()
-        
-        if (permissionsToRequest.isNotEmpty()) {
-            ActivityCompat.requestPermissions(this, permissionsToRequest, PERMISSION_REQUEST_CODE)
-        }
-    }
-    
-    /**
-     * Bind to the Café Mode service
-     */
-    private fun bindService() {
-        val intent = Intent(this, CafeModeService::class.java)
-        bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
-    }
-    
-    /**
-     * Unbind from the service
-     */
-    private fun unbindService() {
+
+    override fun onDestroy() {
+        super.onDestroy()
         if (isBound) {
             unbindService(serviceConnection)
             isBound = false
         }
     }
-    
-    /**
-     * Update UI with current service state
-     */
-    private fun updateUI() {
-        if (!isBound) return
-        
-        cafeModeService?.let { service ->
-            // Update toggle state
-            binding.toggleCafeMode.isChecked = service.isEnabled()
-            
-            // Update sliders
-            binding.sliderIntensity.value = (service.getIntensity() * 100).toFloat()
-            binding.sliderSpatialWidth.value = (service.getSpatialWidth() * 100).toFloat()
-            binding.sliderDistance.value = (service.getDistance() * 100).toFloat()
-            
-            // Update labels
-            updateIntensityLabel((service.getIntensity() * 100).toInt())
-            updateSpatialWidthLabel((service.getSpatialWidth() * 100).toInt())
-            updateDistanceLabel((service.getDistance() * 100).toInt())
-            
-            // Update status including Shizuku status
-            updateStatus(service.isEnabled(), service.isShizukuReady(), service.getShizukuStatus())
-        }
-    }
-    
-    /**
-     * Update toggle button state
-     */
-    private fun updateToggleState() {
-        if (isBound) {
-            cafeModeService?.let { service ->
-                binding.toggleCafeMode.isChecked = service.isEnabled()
-                updateStatus(service.isEnabled(), service.isShizukuReady(), service.getShizukuStatus())
+
+    private fun setupEventListeners() {
+        binding.toggleCafeMode.setOnCheckedChangeListener { _, isChecked ->
+            // Only act if the change is from the user and differs from the current state
+            if (binding.toggleCafeMode.isPressed) {
+                cafeModeService?.toggleCafeMode()
             }
         }
+
+        binding.sliderIntensity.addOnChangeListener { _, value, fromUser ->
+            if (fromUser) cafeModeService?.setIntensity(value / 100f)
+        }
+        binding.sliderSpatialWidth.addOnChangeListener { _, value, fromUser ->
+            if (fromUser) cafeModeService?.setSpatialWidth(value / 100f)
+        }
+        binding.sliderDistance.addOnChangeListener { _, value, fromUser ->
+            if (fromUser) cafeModeService?.setDistance(value / 100f)
+        }
+
+        binding.btnShizukuSetup.setOnClickListener { showShizukuSetupDialog() }
+        binding.btnInfo.setOnClickListener { showInfoDialog() }
+        binding.btnSettings.setOnClickListener {
+            Toast.makeText(this, "Settings coming soon", Toast.LENGTH_SHORT).show()
+        }
     }
-    
-    /**
-     * Update intensity label
-     */
-    private fun updateIntensityLabel(value: Int) {
-        binding.tvIntensityValue.text = "$value%"
+
+    private fun updateSliderUI() {
+        cafeModeService?.let {
+            binding.sliderIntensity.value = it.getIntensity() * 100
+            binding.sliderSpatialWidth.value = it.getSpatialWidth() * 100
+            binding.sliderDistance.value = it.getDistance() * 100
+        }
     }
-    
-    /**
-     * Update spatial width label
-     */
-    private fun updateSpatialWidthLabel(value: Int) {
-        binding.tvSpatialWidthValue.text = "$value%"
-    }
-    
-    /**
-     * Update distance label
-     */
-    private fun updateDistanceLabel(value: Int) {
-        binding.tvDistanceValue.text = "$value%"
-    }
-    
-    /**
-     * Update status display
-     */
-    private fun updateStatus(enabled: Boolean, shizukuReady: Boolean = true, shizukuStatus: String = "") {
+
+    private fun updateStatusUI(status: AppStatus) {
+        // Update master toggle switch state
+        binding.toggleCafeMode.isChecked = status.isEnabled
+
+        // Update text and icon based on status
         when {
-            !shizukuReady -> {
-                binding.tvStatus.text = "Shizuku Setup Required"
+            !status.isShizukuReady -> {
+                binding.tvStatus.text = "Shizuku Required"
                 binding.tvStatus.setTextColor(ContextCompat.getColor(this, R.color.orange_500))
                 binding.ivStatusIcon.setImageResource(R.drawable.ic_warning)
-                
-                // Show Shizuku status as subtitle
                 binding.tvStatusSubtitle.visibility = View.VISIBLE
-                binding.tvStatusSubtitle.text = shizukuStatus
+                binding.tvStatusSubtitle.text = status.shizukuMessage
             }
-            enabled -> {
+            status.isEnabled -> {
                 binding.tvStatus.text = "Café Mode Active"
                 binding.tvStatus.setTextColor(ContextCompat.getColor(this, R.color.green_500))
                 binding.ivStatusIcon.setImageResource(R.drawable.ic_cafe_active)
@@ -247,86 +141,44 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
-    
-    /**
-     * Show Shizuku setup dialog
-     */
+
+    private fun checkPermissions() {
+        val permissions = arrayOf(
+            Manifest.permission.RECORD_AUDIO,
+            Manifest.permission.MODIFY_AUDIO_SETTINGS
+        ).apply {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                plus(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+        val permissionsToRequest = permissions.filter {
+            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+        }.toTypedArray()
+        if (permissionsToRequest.isNotEmpty()) {
+            ActivityCompat.requestPermissions(this, permissionsToRequest, PERMISSION_REQUEST_CODE)
+        }
+    }
+
     private fun showShizukuSetupDialog() {
-        val message = """
-            Shizuku Setup Required
-            
-            CaféTone requires Shizuku for system-wide audio processing without root access.
-            
-            Setup Steps:
-            1. Install Shizuku from Google Play Store
-            2. Enable Developer Options on your device
-            3. Enable USB Debugging in Developer Options
-            4. Connect to PC and run: adb shell sh /sdcard/Android/data/moe.shizuku.privileged.api/start.sh
-            5. Or use Wireless Debugging (Android 11+)
-            
-            Once Shizuku is running, restart CaféTone to apply audio effects.
-        """.trimIndent()
-        
         androidx.appcompat.app.AlertDialog.Builder(this)
             .setTitle("Shizuku Setup")
-            .setMessage(message)
+            .setMessage("CaféTone requires Shizuku for system-wide audio processing. Please install and start the Shizuku service.")
             .setPositiveButton("Open Play Store") { _, _ ->
                 try {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=moe.shizuku.privileged.api"))
-                    startActivity(intent)
+                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=moe.shizuku.privileged.api")))
                 } catch (e: Exception) {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=moe.shizuku.privileged.api"))
-                    startActivity(intent)
+                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=moe.shizuku.privileged.api")))
                 }
             }
             .setNegativeButton("Cancel", null)
             .show()
     }
-    
-    /**
-     * Show information dialog
-     */
+
     private fun showInfoDialog() {
-        val message = """
-            Café Mode transforms your audio to sound like it's coming from speakers in a distant café.
-            
-            Features:
-            • Psychoacoustic distance simulation
-            • Spatial audio widening
-            • Café-like frequency response
-            • Early reflections and room acoustics
-            
-            System Requirements:
-            • Shizuku app for system-wide audio processing
-            • Android 7.0+ (API 24+)
-            • Headphones or earbuds for optimal experience
-            
-            Adjust the sliders to fine-tune the effect to your preference.
-        """.trimIndent()
-        
         androidx.appcompat.app.AlertDialog.Builder(this)
             .setTitle("About Café Mode")
-            .setMessage(message)
+            .setMessage("Café Mode transforms your audio to sound like it's coming from speakers in a distant café.")
             .setPositiveButton("OK", null)
             .show()
     }
-    
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        
-        if (requestCode == PERMISSION_REQUEST_CODE) {
-            val allGranted = grantResults.all { it == PackageManager.PERMISSION_GRANTED }
-            
-            if (allGranted) {
-                Log.i(TAG, "All permissions granted")
-            } else {
-                Log.w(TAG, "Some permissions denied")
-                Toast.makeText(this, "Some permissions are required for full functionality", Toast.LENGTH_LONG).show()
-            }
-        }
-    }
-} 
+}

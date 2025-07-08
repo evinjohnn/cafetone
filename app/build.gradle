@@ -5,12 +5,12 @@ plugins {
 
 android {
     namespace 'com.cafetone.audio'
-    compileSdk 35
-
+    compileSdk 34
+    ndkVersion "27.0.12077973"
     defaultConfig {
         applicationId "com.cafetone.audio"
         minSdk 24
-        targetSdk 35
+        targetSdk 34
         versionCode 1
         versionName "1.0"
 
