@@ -17,28 +17,27 @@ class ShizukuIntegration(private val context: Context) {
         private const val SHIZUKU_PERMISSION_REQUEST_CODE = 1000
     }
 
+    var isPermissionGranted = false // <-- Public property now
+        private set
+
     private var isShizukuAvailable = false
-    private var isPermissionGranted = false
     private var onPermissionGrantedCallback: (() -> Unit)? = null
 
     private val binderDeathRecipient = Shizuku.OnBinderDeadListener {
-        Log.w(TAG, "Shizuku binder died, attempting to reconnect...")
-        checkShizukuAvailability()
+        isShizukuAvailable = false
+        isPermissionGranted = false
+        onPermissionGrantedCallback?.invoke()
     }
 
     private val permissionRequestListener = Shizuku.OnRequestPermissionResultListener { requestCode, grantResult ->
         if (requestCode == SHIZUKU_PERMISSION_REQUEST_CODE) {
-            if (grantResult == PackageManager.PERMISSION_GRANTED) {
-                isPermissionGranted = true
-                onPermissionGrantedCallback?.invoke()
-            } else {
-                isPermissionGranted = false
-            }
+            isPermissionGranted = (grantResult == PackageManager.PERMISSION_GRANTED)
+            onPermissionGrantedCallback?.invoke()
         }
     }
 
-    fun initialize(onPermissionGranted: () -> Unit) {
-        this.onPermissionGrantedCallback = onPermissionGranted
+    fun initialize(onStatusChanged: () -> Unit) {
+        this.onPermissionGrantedCallback = onStatusChanged
         Shizuku.addBinderDeadListener(binderDeathRecipient)
         Shizuku.addRequestPermissionResultListener(permissionRequestListener)
         checkShizukuAvailability()
@@ -46,8 +45,8 @@ class ShizukuIntegration(private val context: Context) {
 
     private fun checkShizukuAvailability() {
         try {
-            if (Shizuku.pingBinder()) {
-                isShizukuAvailable = true
+            isShizukuAvailable = Shizuku.pingBinder()
+            if (isShizukuAvailable) {
                 if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
                     isPermissionGranted = true
                     onPermissionGrantedCallback?.invoke()
@@ -55,15 +54,16 @@ class ShizukuIntegration(private val context: Context) {
                     Shizuku.requestPermission(SHIZUKU_PERMISSION_REQUEST_CODE)
                 }
             } else {
-                isShizukuAvailable = false
+                onPermissionGrantedCallback?.invoke()
             }
         } catch (e: Exception) {
             isShizukuAvailable = false
+            onPermissionGrantedCallback?.invoke()
         }
     }
 
     fun grantAudioPermissions() {
-        if (!isShizukuAvailable || !isPermissionGranted) return
+        if (!isPermissionGranted) return
         CoroutineScope(Dispatchers.IO).launch {
             val packageName = context.packageName
             val commands = listOf(
@@ -71,22 +71,17 @@ class ShizukuIntegration(private val context: Context) {
                 arrayOf("pm", "grant", packageName, "android.permission.DUMP")
             )
             commands.forEach { executeShizukuCommand(it) }
-            withContext(Dispatchers.Main) {
-                Log.i(TAG, "Audio permissions granted via Shizuku")
-            }
         }
     }
 
     private fun executeShizukuCommand(command: Array<String>): String {
         if (!isPermissionGranted) return "Error: Shizuku permission not granted."
         return try {
-            // Use reflection to call the private static method
             val method = Shizuku::class.java.getDeclaredMethod("newProcess", Array<String>::class.java, Array<String>::class.java, String::class.java)
-            method.isAccessible = true // Make it accessible
+            method.isAccessible = true
             val process = method.invoke(null, command, null, null) as Process
             process.inputStream.bufferedReader().use { it.readText() }
         } catch (e: Exception) {
-            Log.e(TAG, "Error executing Shizuku command via reflection", e)
             "Error: ${e.message}"
         }
     }
@@ -94,7 +89,6 @@ class ShizukuIntegration(private val context: Context) {
     fun cleanup() {
         Shizuku.removeBinderDeadListener(binderDeathRecipient)
         Shizuku.removeRequestPermissionResultListener(permissionRequestListener)
-        onPermissionGrantedCallback = null
     }
 
     fun getStatusMessage(): String = when {

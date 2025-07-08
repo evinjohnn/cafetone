@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build // <-- IMPORT ADDED
 import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
@@ -33,7 +34,9 @@ class MainActivity : AppCompatActivity() {
 
     // Observer for the service status
     private val statusObserver = Observer<AppStatus> { status ->
-        updateStatusUI(status)
+        if (status != null) {
+            updateStatusUI(status)
+        }
     }
 
     private val serviceConnection = object : ServiceConnection {
@@ -82,8 +85,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupEventListeners() {
-        binding.toggleCafeMode.setOnCheckedChangeListener { _, isChecked ->
-            // Only act if the change is from the user and differs from the current state
+        binding.toggleCafeMode.setOnCheckedChangeListener { _, _ ->
+            // Only act if the change is from the user
             if (binding.toggleCafeMode.isPressed) {
                 cafeModeService?.toggleCafeMode()
             }
@@ -115,10 +118,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateStatusUI(status: AppStatus) {
-        // Update master toggle switch state
         binding.toggleCafeMode.isChecked = status.isEnabled
 
-        // Update text and icon based on status
         when {
             !status.isShizukuReady -> {
                 binding.tvStatus.text = "Shizuku Required"
@@ -143,17 +144,18 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkPermissions() {
-        val permissions = arrayOf(
+        val requiredPermissions = mutableListOf(
             Manifest.permission.RECORD_AUDIO,
             Manifest.permission.MODIFY_AUDIO_SETTINGS
-        ).apply {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                plus(Manifest.permission.POST_NOTIFICATIONS)
-            }
+        )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            requiredPermissions.add(Manifest.permission.POST_NOTIFICATIONS)
         }
-        val permissionsToRequest = permissions.filter {
+
+        val permissionsToRequest = requiredPermissions.filter {
             ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
         }.toTypedArray()
+
         if (permissionsToRequest.isNotEmpty()) {
             ActivityCompat.requestPermissions(this, permissionsToRequest, PERMISSION_REQUEST_CODE)
         }

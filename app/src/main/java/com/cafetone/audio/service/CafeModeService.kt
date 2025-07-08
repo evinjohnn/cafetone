@@ -11,7 +11,6 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.cafetone.audio.MainActivity
@@ -21,7 +20,6 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.*
 
-// Data class to hold the app's current status
 data class AppStatus(val isEnabled: Boolean, val shizukuMessage: String, val isShizukuReady: Boolean)
 
 class CafeModeService : Service() {
@@ -31,7 +29,6 @@ class CafeModeService : Service() {
         private const val NOTIFICATION_ID = 1001
         private const val CHANNEL_ID = "cafetone_channel"
         private val EFFECT_UUID_CAFETONE = UUID.fromString("87654321-4321-8765-4321-fedcba098765")
-        // Actions
         const val ACTION_TOGGLE = "com.cafetone.audio.TOGGLE"
     }
 
@@ -40,15 +37,12 @@ class CafeModeService : Service() {
     private var isServiceRunning = false
     private lateinit var shizukuIntegration: ShizukuIntegration
 
-    // Effect parameters
     private var intensity = 0.7f
     private var spatialWidth = 0.6f
     private var distance = 0.8f
 
-    // --- LiveData for Reactive UI ---
     private val _status = MutableLiveData<AppStatus>()
     val status: LiveData<AppStatus> = _status
-    // ---
 
     inner class LocalBinder : Binder() {
         fun getService(): CafeModeService = this@CafeModeService
@@ -56,17 +50,14 @@ class CafeModeService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        Log.i(TAG, "Café Mode Service created")
         shizukuIntegration = ShizukuIntegration(this)
         shizukuIntegration.initialize { onShizukuStatusChanged() }
         createNotificationChannel()
-        // Set initial status
         updateStatus()
     }
 
     private fun onShizukuStatusChanged() {
-        // This is the callback from ShizukuIntegration
-        if (shizukuIntegration.isPermissionGranted()) {
+        if (shizukuIntegration.isPermissionGranted) { // <-- LOGIC FIX
             shizukuIntegration.grantAudioPermissions()
             setupAudioEffect()
         }
@@ -93,7 +84,7 @@ class CafeModeService : Service() {
     }
 
     private fun setupAudioEffect() {
-        if (!shizukuIntegration.isPermissionGranted()) return
+        if (!shizukuIntegration.isPermissionGranted) return // <-- LOGIC FIX
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.MODIFY_AUDIO_SETTINGS) != PackageManager.PERMISSION_GRANTED) return
 
         try {
@@ -107,7 +98,6 @@ class CafeModeService : Service() {
                 setAllParams()
                 Log.i(TAG, "AudioEffect created and configured.")
             } ?: Log.e(TAG, "Failed to create any AudioEffect.")
-
         } catch (e: Exception) {
             Log.e(TAG, "Error setting up audio effect", e)
         }
@@ -137,7 +127,7 @@ class CafeModeService : Service() {
                 val method: Method = AudioEffect::class.java.getMethod("setParameter", ByteArray::class.java, ByteArray::class.java)
                 method.invoke(effect, paramBuffer, valueBuffer)
             } catch (e: Exception) {
-                // This can fail if the effect doesn't support the param; safe to ignore
+                // Ignore
             }
         }
     }
@@ -149,7 +139,7 @@ class CafeModeService : Service() {
     }
 
     fun toggleCafeMode() {
-        if (!shizukuIntegration.isPermissionGranted()) return
+        if (!shizukuIntegration.isPermissionGranted) return // <-- LOGIC FIX
         val newIsEnabledState = !(_status.value?.isEnabled ?: false)
         audioEffect?.enabled = newIsEnabledState
         updateStatus(isEnabled = newIsEnabledState)
@@ -176,7 +166,7 @@ class CafeModeService : Service() {
 
     private fun updateStatus(isEnabled: Boolean = _status.value?.isEnabled ?: false) {
         val shizukuMessage = shizukuIntegration.getStatusMessage()
-        val shizukuReady = shizukuIntegration.isPermissionGranted()
+        val shizukuReady = shizukuIntegration.isPermissionGranted // <-- LOGIC FIX
         _status.postValue(AppStatus(isEnabled, shizukuMessage, shizukuReady))
         updateNotification()
     }
