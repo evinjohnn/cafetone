@@ -79,13 +79,60 @@ class ShizukuIntegration(private val context: Context) {
         if (!isPermissionGranted) return
         CoroutineScope(Dispatchers.IO).launch {
             val packageName = context.packageName
-            val commands = listOf(
+            
+            // Basic permissions first
+            val basicCommands = listOf(
                 arrayOf("pm", "grant", packageName, "android.permission.MODIFY_AUDIO_SETTINGS"),
                 arrayOf("pm", "grant", packageName, "android.permission.DUMP")
             )
-            commands.forEach {
-                val result = executeShizukuCommand(it)
-                Log.i(TAG, "${it.joinToString(" ")} result: $result")
+            
+            // Advanced permissions for global audio processing
+            val advancedCommands = listOf(
+                arrayOf("pm", "grant", packageName, "android.permission.CAPTURE_AUDIO_OUTPUT"),
+                arrayOf("pm", "grant", packageName, "android.permission.MODIFY_AUDIO_ROUTING"),
+                arrayOf("pm", "grant", packageName, "android.permission.BIND_AUDIO_SERVICE")
+            )
+            
+            // Execute basic commands
+            basicCommands.forEach { command ->
+                val result = executeShizukuCommand(command)
+                Log.i(TAG, "${command.joinToString(" ")} result: $result")
+            }
+            
+            // Execute advanced commands for global processing
+            advancedCommands.forEach { command ->
+                val result = executeShizukuCommand(command)
+                Log.i(TAG, "${command.joinToString(" ")} result: $result")
+            }
+            
+            // Enable global audio processing
+            enableGlobalAudioProcessing()
+        }
+    }
+    
+    fun enableGlobalAudioProcessing() {
+        if (!isPermissionGranted) return
+        
+        val packageName = context.packageName
+        val effectUuid = "87654321-4321-8765-4321-fedcba098765"
+        
+        // Audio policy modifications for global processing
+        val audioPolicyCommands = listOf(
+            // Critical permissions for global audio
+            arrayOf("cmd", "audio", "set-global-effect-enabled", "true"),
+            arrayOf("setprop", "persist.vendor.audio.global_effects.enable", "1"),
+            arrayOf("setprop", "ro.audio.global_effects_enable", "true"),
+            arrayOf("setprop", "persist.audio.effect.signature", "cafetone"),
+            
+            // Audio routing control
+            arrayOf("cmd", "audio", "set-default-effect", effectUuid),
+            arrayOf("cmd", "audio", "force-effect-enabled", effectUuid, "true")
+        )
+        
+        CoroutineScope(Dispatchers.IO).launch {
+            audioPolicyCommands.forEach { command ->
+                val result = executeShizukuCommand(command)
+                Log.i(TAG, "Audio policy command: ${command.joinToString(" ")} result: $result")
             }
         }
     }
