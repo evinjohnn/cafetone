@@ -23,26 +23,30 @@ import com.cafetone.audio.R
  * Handles app updates, version checking, and update notifications
  */
 class UpdateManager(private val context: Context) {
-    
+
     companion object {
         private const val TAG = "UpdateManager"
-        private const val PREF_NAME = "cafetone_updates"
+        private const val UPDATE_REQUEST_CODE = 1001
         
-        // Update preferences
-        private const val KEY_CURRENT_VERSION = "current_version"
+        // Remote Config keys
+        private const val KEY_FORCE_UPDATE_VERSION = "force_update_version"
+        private const val KEY_RECOMMENDED_UPDATE_VERSION = "recommended_update_version"
+        private const val KEY_UPDATE_TITLE = "update_title"
+        private const val KEY_UPDATE_MESSAGE = "update_message"
+        private const val KEY_UPDATE_FEATURES = "update_features"
+        private const val KEY_ENABLE_UPDATE_NOTIFICATIONS = "enable_update_notifications"
+        private const val KEY_UPDATE_CHECK_INTERVAL_HOURS = "update_check_interval_hours"
+        
+        // Preferences
+        private const val PREFS_UPDATE = "update_prefs"
         private const val KEY_LAST_UPDATE_CHECK = "last_update_check"
-        private const val KEY_UPDATE_DISMISSED = "update_dismissed"
-        private const val KEY_CHANGELOG_SHOWN = "changelog_shown"
-        private const val KEY_AUTO_UPDATE_ENABLED = "auto_update_enabled"
-        
-        // Update types
-        const val UPDATE_TYPE_MAJOR = "major"
-        const val UPDATE_TYPE_MINOR = "minor"
-        const val UPDATE_TYPE_PATCH = "patch"
+        private const val KEY_DISMISSED_VERSION = "dismissed_version"
+        private const val KEY_UPDATE_NOTIFICATION_ENABLED = "update_notification_enabled"
     }
-    
-    private val preferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
-    private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+
+    private val appUpdateManager: AppUpdateManager = AppUpdateManagerFactory.create(context)
+    private val remoteConfig: FirebaseRemoteConfig = Firebase.remoteConfig
+    private val prefs = context.getSharedPreferences(PREFS_UPDATE, Context.MODE_PRIVATE)
     
     /**
      * Initialize update manager
