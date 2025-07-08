@@ -64,12 +64,11 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Professional Audio DSP"
+                            android:text="Sony Café Mode DSP"
                             android:textAppearance="@style/TextAppearance.CaféTone.BodyMedium"
                             android:textColor="@color/cafe_warm" />
 
                     </LinearLayout>
-
                 </LinearLayout>
 
                 <!-- Status Section -->
@@ -111,8 +110,19 @@
                             android:textAppearance="@style/TextAppearance.CaféTone.BodySmall"
                             android:textColor="@color/orange_500"
                             android:visibility="gone" />
-
                     </LinearLayout>
+
+                    <!-- Refresh Button -->
+                    <ImageView
+                        android:id="@+id/btnRefreshStatus"
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:layout_marginStart="8dp"
+                        android:padding="4dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:src="@drawable/ic_refresh"
+                        app:tint="@color/gray_700"
+                        android:contentDescription="Refresh Status"/>
 
                 </LinearLayout>
 
@@ -121,7 +131,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
-                    android:text="Transform your audio to sound like it's coming from speakers in a distant café. Experience psychoacoustic distance simulation with spatial audio widening."
+                    android:text="Transform your audio with Sony's advanced Café Mode DSP. Experience psychoacoustic distance simulation with spatial audio widening and intelligent reverb processing."
                     android:textAppearance="@style/TextAppearance.CaféTone.BodyMedium"
                     android:textColor="@color/cafe_warm"
                     android:textAlignment="center" />
@@ -161,7 +171,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Café Mode"
+                        android:text="Sony Café Mode"
                         android:textAppearance="@style/TextAppearance.CaféTone.TitleLarge"
                         android:textColor="@color/cafe_brown" />
 
@@ -314,7 +324,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
                         android:layout_marginBottom="12dp"
-                        android:text="Adjusts stereo widening using Haas effect"
+                        android:text="Adjusts stereo widening using Sony effects"
                         android:textAppearance="@style/TextAppearance.CaféTone.BodySmall"
                         android:textColor="@color/cafe_warm" />
 
@@ -473,7 +483,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="32dp"
-            android:text="© 2024 CaféTone Audio\nProfessional-grade audio processing"
+            android:text="© 2025 CaféTone Audio\nSony Café Mode DSP Technology"
             android:textAppearance="@style/TextAppearance.CaféTone.BodySmall"
             android:textColor="@color/cafe_warm"
             android:textAlignment="center"
