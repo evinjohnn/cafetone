@@ -165,6 +165,11 @@ class MainActivity : AppCompatActivity() {
             showSettingsDialog()
             analyticsManager?.logEvent(AnalyticsManager.EVENT_SETTINGS_OPENED)
         }
+        
+        // Add test button for global processing validation
+        binding.btnTestGlobalProcessing?.setOnClickListener {
+            runGlobalProcessingTests()
+        }
     }
 
     private fun updateSliderUI() {
