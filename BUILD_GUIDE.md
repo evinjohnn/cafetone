@@ -2,15 +2,11 @@
 
 ## ✅ **Updated to Latest Versions (2025)**
 
-This project has been updated to use the latest stable versions of all tools and dependencies:
-
-- **Gradle**: 8.4 (Latest Stable)
-- **Android Gradle Plugin**: 8.7.2 (Latest)
-- **Kotlin**: 2.0.21 (Latest)
-- **Target SDK**: Android 15 (API 35)
-- **Compile SDK**: Android 15 (API 35)
-- **NDK**: Latest compatible with AGP 8.7.2
-- **All Dependencies**: Latest stable versions
+This project has been updated with:
+- **Modern UI Redesign**: Material Design 3 with spacious, premium layout
+- **GitHub Star Dialog**: One-time encouragement for users to star the project
+- **Firebase Analytics**: Comprehensive event tracking and crash reporting
+- **Global Audio Processing**: Real-time system-wide audio enhancement
 
 ## 🔧 **Setup Instructions**
 
@@ -20,10 +16,11 @@ This project has been updated to use the latest stable versions of all tools and
 - **Android SDK**: API 35 installed
 - **Android NDK**: Latest version
 - **Physical Android Device**: API 24+ (audio effects don't work in emulator)
+- **Google Account**: For Firebase setup
 
 ### **2. Project Setup**
 
-1. **Download and Open Project**
+1. **Clone and Open Project**
    ```bash
    # Open Android Studio
    # File → Open → Select the /app folder
@@ -37,7 +34,12 @@ This project has been updated to use the latest stable versions of all tools and
    ndk.dir=C:\\Users\\YourUsername\\AppData\\Local\\Android\\Sdk\\ndk\\25.2.9519653
    ```
 
-3. **Install Required SDKs**
+3. **Firebase Setup (REQUIRED)**
+   - Follow instructions in [FIREBASE_SETUP.md](FIREBASE_SETUP.md)
+   - Download `google-services.json` to `app/` directory
+   - **The app will not compile without this file**
+
+4. **Install Required SDKs**
    - Go to **Tools → SDK Manager**
    - Install **Android 15 (API 35)**
    - Install **Latest NDK** (25.x.x)
@@ -68,36 +70,31 @@ This project has been updated to use the latest stable versions of all tools and
    ./gradlew installDebug
    ```
 
-## 🔍 **Troubleshooting**
+## 🆕 **New Features (2025 Update)**
 
-### **Common Issues & Solutions**
+### **Modern UI Redesign**
+- Clean header with app icon and title
+- Prominent Master Toggle Card with integrated status
+- Organized Controls Card with proper spacing and dividers
+- Enhanced Action Buttons with better visual hierarchy
+- Material Design 3 throughout
 
-#### **1. Gradle Sync Failed**
-```bash
-# Clean and rebuild
-./gradlew clean
-./gradlew build
-```
+### **GitHub Star Dialog**
+- One-time dialog on first app launch
+- Encourages users to star the project on GitHub
+- Never shows again after first display
+- Additional star option in About dialog
 
-#### **2. NDK Not Found**
-- Install NDK via SDK Manager
-- Update `ndk.dir` in `local.properties`
+### **Firebase Analytics Integration**
+- Comprehensive event tracking:
+  - `cafe_mode_toggled` - When users enable/disable café mode
+  - `slider_adjusted` - When users adjust intensity/spatial/distance
+  - `github_star_clicked` - When users click GitHub star button
+  - `app_launch`, `first_launch`, permissions, and more
+- Crash reporting with Crashlytics
+- Privacy-focused (no personal data collected)
 
-#### **3. CMake Errors**
-- Install CMake via SDK Manager
-- Ensure CMake version 3.22.1+ is installed
-
-#### **4. Permission Errors (Windows)**
-- Run Android Studio as Administrator
-- Check antivirus isn't blocking Gradle
-
-#### **5. Out of Memory**
-```bash
-# Increase heap size in gradle.properties (already configured)
-org.gradle.jvmargs=-Xmx4096m -Dfile.encoding=UTF-8
-```
-
-## 📱 **Testing**
+## 🔍 **Testing**
 
 ### **Required Device Setup**
 1. **Enable Developer Options**
@@ -108,29 +105,36 @@ org.gradle.jvmargs=-Xmx4096m -Dfile.encoding=UTF-8
 ### **Testing Steps**
 1. **Install APK** on device
 2. **Grant all permissions** when prompted
-3. **Open music app** (Spotify, YouTube Music, etc.)
-4. **Play music** and return to CaféTone
-5. **Toggle Café Mode** and adjust sliders
-6. **Verify audio effect** is applied
+3. **Complete Shizuku setup** if needed
+4. **Open music app** (Spotify, YouTube Music, etc.)
+5. **Play music** and return to CaféTone
+6. **Toggle Café Mode** and adjust sliders
+7. **Verify audio effect** is applied globally
 
-## 🎯 **Performance Optimization**
+### **Testing New Features**
+1. **UI Redesign**: Verify clean, modern interface
+2. **GitHub Dialog**: Uninstall/reinstall to see first-launch dialog
+3. **Firebase Analytics**: Check Firebase Console for events
 
-The project includes several optimizations:
-- **Gradle Configuration Cache**: Faster builds
-- **Parallel Execution**: Reduced build times
-- **R8 Optimization**: Smaller APK size
-- **Native Code Optimization**: -O3, LTO, NEON instructions
-- **Latest Kotlin Compiler**: Improved performance
+## 📊 **Analytics Events Tracked**
+
+The app tracks these events for improvement (all anonymous):
+- App launches and usage patterns
+- Feature usage (café mode toggles, slider adjustments)
+- User engagement (GitHub star clicks, dialog interactions)
+- Performance metrics and crash reports
 
 ## 🔧 **Build Variants**
 
 ### **Debug Build**
 - Includes debugging symbols
+- Firebase DebugView enabled
 - Faster build times
 - Larger APK size
 
 ### **Release Build**
 - Optimized and obfuscated
+- Production Firebase events
 - Smaller APK size
 - Requires signing for distribution
 
@@ -139,22 +143,35 @@ The project includes several optimizations:
 ```
 CaféTone/
 ├── app/
+│   ├── google-services.json     # Firebase config (add manually)
 │   ├── src/main/
-│   │   ├── cpp/              # Native C++ DSP code
-│   │   ├── java/             # Kotlin application code
-│   │   ├── res/              # Resources and UI
+│   │   ├── cpp/                 # Native C++ DSP code
+│   │   ├── java/                # Kotlin application code
+│   │   ├── res/                 # Resources and UI
 │   │   └── AndroidManifest.xml
-│   └── build.gradle          # App build configuration
+│   └── build.gradle             # App build configuration
 ├── gradle/
-│   └── wrapper/              # Gradle wrapper
-├── build.gradle              # Project build configuration
-├── settings.gradle           # Project settings
-├── gradle.properties         # Gradle configuration
-└── local.properties          # Local SDK paths (create from template)
+│   └── wrapper/                 # Gradle wrapper
+├── build.gradle                 # Project build configuration
+├── settings.gradle              # Project settings
+├── FIREBASE_SETUP.md           # Firebase setup instructions
+├── PRIVACY_POLICY.md           # Privacy policy for analytics
+└── README.md                   # This file
 ```
 
 ## 🚀 **Ready to Build!**
 
-The project is now fully updated and compatible with the latest Android development tools. Follow the setup instructions above and you should have no compatibility issues.
+The project now includes:
+- ✅ Modern Material Design 3 UI
+- ✅ GitHub star encouragement system
+- ✅ Firebase Analytics integration
+- ✅ Global audio processing enhancement
+- ✅ Privacy-focused analytics tracking
+
+**Next Steps:**
+1. Set up Firebase project and download `google-services.json`
+2. Build and install on Android device
+3. Test global audio processing with music apps
+4. Monitor Firebase Analytics for user engagement
 
 **Need help?** Check the troubleshooting section or create an issue in the repository.
