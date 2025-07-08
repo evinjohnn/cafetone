@@ -16,6 +16,11 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.cafetone.audio.MainActivity
 import com.cafetone.audio.R
+import com.cafetone.audio.analytics.AnalyticsManager
+import com.cafetone.audio.engagement.UserEngagementManager
+import com.cafetone.audio.playstore.PlayStoreIntegration
+import com.cafetone.audio.update.UpdateManager
+import com.cafetone.audio.dsp.CafeModeDSP
 import java.lang.reflect.Method
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -26,7 +31,7 @@ data class AppStatus(val isEnabled: Boolean, val shizukuMessage: String, val isS
 class CafeModeService : Service() {
 
     companion object {
-        private const val TAG = "CafeToneService" // Corrected Logcat Tag
+        private const val TAG = "CafeToneService"
         private const val NOTIFICATION_ID = 1001
         private const val CHANNEL_ID = "cafetone_channel"
         private val EFFECT_UUID_CAFETONE = UUID.fromString("87654321-4321-8765-4321-fedcba098765")
@@ -37,10 +42,21 @@ class CafeModeService : Service() {
     private var audioEffect: AudioEffect? = null
     private var isServiceRunning = false
     private lateinit var shizukuIntegration: ShizukuIntegration
+    
+    // Sony Café Mode DSP Engine
+    private var cafeModeDSP: CafeModeDSP? = null
 
+    // Advanced Features
+    private lateinit var analyticsManager: AnalyticsManager
+    private lateinit var engagementManager: UserEngagementManager
+    private lateinit var playStoreIntegration: PlayStoreIntegration
+    private lateinit var updateManager: UpdateManager
+
+    // Sony Café Mode Parameters
     private var intensity = 0.7f
     private var spatialWidth = 0.6f
     private var distance = 0.8f
+    private var isEnabled = false
 
     private val _status = MutableLiveData<AppStatus>()
     val status: LiveData<AppStatus> = _status
@@ -51,26 +67,73 @@ class CafeModeService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        
+        // Initialize advanced features
+        analyticsManager = AnalyticsManager(this)
+        engagementManager = UserEngagementManager(this)
+        playStoreIntegration = PlayStoreIntegration(this)
+        updateManager = UpdateManager(this)
+        
+        // Initialize all systems
+        analyticsManager.initialize()
+        playStoreIntegration.initialize()
+        updateManager.initialize()
+        
+        // Initialize Shizuku and DSP
         shizukuIntegration = ShizukuIntegration(this)
         shizukuIntegration.initialize { onShizukuStatusChanged() }
+        
+        // Initialize Sony Café Mode DSP
+        initializeCafeModeDSP()
+        
         createNotificationChannel()
         updateStatus()
+        
+        Log.i(TAG, "CafeModeService created with advanced features")
+    }
+    
+    private fun initializeCafeModeDSP() {
+        try {
+            cafeModeDSP = CafeModeDSP()
+            val result = cafeModeDSP?.init()
+            
+            if (result == 0) {
+                Log.i(TAG, "Sony Café Mode DSP initialized successfully")
+                
+                // Set default parameters
+                cafeModeDSP?.setIntensity(intensity)
+                cafeModeDSP?.setSpatialWidth(spatialWidth)
+                cafeModeDSP?.setDistance(distance)
+                
+            } else {
+                Log.e(TAG, "Failed to initialize Sony Café Mode DSP: $result")
+                cafeModeDSP = null
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Exception during Sony Café Mode DSP initialization", e)
+            cafeModeDSP = null
+            analyticsManager.trackCrash(e, "DSP Initialization")
+        }
     }
 
     private fun onShizukuStatusChanged() {
         val granted = shizukuIntegration.isPermissionGranted
         Log.d(TAG, "onShizukuStatusChanged called. isPermissionGranted = $granted")
+        
         if (granted) {
-            Log.d(TAG, "Permission is granted, now granting audio permissions and setting up effect.")
+            Log.d(TAG, "Shizuku permission granted, setting up audio effects")
             shizukuIntegration.grantAudioPermissions()
             setupAudioEffect()
         }
+        
         updateStatus()
+        analyticsManager.trackShizukuSetup(granted)
     }
 
     fun forceShizukuCheck() {
-        Log.d(TAG, "Manual refresh triggered from UI.")
+        Log.d(TAG, "Manual refresh triggered from UI")
         shizukuIntegration.checkShizukuAvailability()
+        analyticsManager.logEvent(AnalyticsManager.EVENT_SHIZUKU_SETUP, mapOf("manual_check" to true))
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -88,8 +151,15 @@ class CafeModeService : Service() {
 
     override fun onDestroy() {
         releaseAudioEffect()
+        releaseCafeModeDSP()
         shizukuIntegration.cleanup()
         super.onDestroy()
+    }
+    
+    private fun releaseCafeModeDSP() {
+        cafeModeDSP?.release()
+        cafeModeDSP = null
+        Log.i(TAG, "Sony Café Mode DSP released")
     }
 
     private fun setupAudioEffect() {
@@ -103,12 +173,13 @@ class CafeModeService : Service() {
                 ?: createAudioEffect(AudioEffect.EFFECT_TYPE_EQUALIZER, null)
 
             audioEffect?.let {
-                it.enabled = _status.value?.isEnabled ?: false
+                it.enabled = isEnabled
                 setAllParams()
-                Log.i(TAG, "AudioEffect created and configured.")
-            } ?: Log.e(TAG, "Failed to create any AudioEffect.")
+                Log.i(TAG, "AudioEffect created and configured")
+            } ?: Log.e(TAG, "Failed to create any AudioEffect")
         } catch (e: Exception) {
             Log.e(TAG, "Error setting up audio effect", e)
+            analyticsManager.trackCrash(e, "AudioEffect Setup")
         }
     }
 
@@ -128,6 +199,7 @@ class CafeModeService : Service() {
     }
 
     private fun setEffectParam(paramId: Int, value: Float) {
+        // Set parameters on both AudioEffect and Sony DSP
         audioEffect?.let { effect ->
             try {
                 if (!effect.hasControl()) return
@@ -136,7 +208,16 @@ class CafeModeService : Service() {
                 val method: Method = AudioEffect::class.java.getMethod("setParameter", ByteArray::class.java, ByteArray::class.java)
                 method.invoke(effect, paramBuffer, valueBuffer)
             } catch (e: Exception) {
-                // Ignore
+                // Ignore reflection errors
+            }
+        }
+        
+        // Also set on Sony Café Mode DSP
+        cafeModeDSP?.let { dsp ->
+            when (paramId) {
+                0 -> dsp.setIntensity(value)
+                1 -> dsp.setSpatialWidth(value)
+                2 -> dsp.setDistance(value)
             }
         }
     }
@@ -149,31 +230,64 @@ class CafeModeService : Service() {
 
     fun toggleCafeMode() {
         if (!shizukuIntegration.isPermissionGranted) return
-        val newIsEnabledState = !(_status.value?.isEnabled ?: false)
+        
+        val newIsEnabledState = !isEnabled
+        isEnabled = newIsEnabledState
+        
+        // Update AudioEffect
         audioEffect?.enabled = newIsEnabledState
+        
+        // Update Sony Café Mode DSP
+        cafeModeDSP?.setEnabled(newIsEnabledState)
+        
         updateStatus(isEnabled = newIsEnabledState)
+        
+        // Track usage and check for milestones
+        if (newIsEnabledState) {
+            val milestoneReached = engagementManager.trackCafeModeUsage()
+            analyticsManager.trackCafeModeUsage(true, intensity, spatialWidth, distance)
+            
+            if (milestoneReached) {
+                Log.i(TAG, "User reached a new milestone!")
+            }
+        }
+        
+        Log.i(TAG, "Sony Café Mode ${if (newIsEnabledState) "enabled" else "disabled"}")
     }
 
     fun setIntensity(value: Float) {
         intensity = value.coerceIn(0.0f, 1.0f)
         setEffectParam(0, intensity)
+        analyticsManager.trackParameterChange("intensity", intensity)
+        Log.v(TAG, "Intensity set to: $intensity")
     }
 
     fun setSpatialWidth(value: Float) {
         spatialWidth = value.coerceIn(0.0f, 1.0f)
         setEffectParam(1, spatialWidth)
+        analyticsManager.trackParameterChange("spatial_width", spatialWidth)
+        Log.v(TAG, "Spatial width set to: $spatialWidth")
     }
 
     fun setDistance(value: Float) {
         distance = value.coerceIn(0.0f, 1.0f)
         setEffectParam(2, distance)
+        analyticsManager.trackParameterChange("distance", distance)
+        Log.v(TAG, "Distance set to: $distance")
     }
 
     fun getIntensity(): Float = intensity
     fun getSpatialWidth(): Float = spatialWidth
     fun getDistance(): Float = distance
 
-    private fun updateStatus(isEnabled: Boolean = _status.value?.isEnabled ?: false) {
+    // Advanced feature accessors
+    fun getAnalyticsManager(): AnalyticsManager = analyticsManager
+    fun getEngagementManager(): UserEngagementManager = engagementManager
+    fun getPlayStoreIntegration(): PlayStoreIntegration = playStoreIntegration
+    fun getUpdateManager(): UpdateManager = updateManager
+    fun getCafeModeDSP(): CafeModeDSP? = cafeModeDSP
+
+    private fun updateStatus(isEnabled: Boolean = this.isEnabled) {
         val shizukuMessage = shizukuIntegration.getStatusMessage()
         val shizukuReady = shizukuIntegration.isPermissionGranted
         _status.postValue(AppStatus(isEnabled, shizukuMessage, shizukuReady))
@@ -194,12 +308,12 @@ class CafeModeService : Service() {
 
         val statusText = when {
             !currentStatus.isShizukuReady -> currentStatus.shizukuMessage
-            currentStatus.isEnabled -> "Transforming audio"
-            else -> "Tap to activate"
+            currentStatus.isEnabled -> "Sony Café Mode Active - Transforming Audio"
+            else -> "Tap to activate Sony Café Mode"
         }
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Café Mode")
+            .setContentTitle("CaféTone")
             .setContentText(statusText)
             .setSmallIcon(R.drawable.ic_cafe_mode)
             .setContentIntent(pIntent)
