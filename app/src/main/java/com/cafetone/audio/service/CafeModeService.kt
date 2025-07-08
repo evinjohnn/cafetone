@@ -5,7 +5,7 @@ import android.app.*
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.media.audiofx.AudioEffect
+import android.media.audiofx.AudioEffect // <-- FIX: Added this import
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
@@ -17,11 +17,11 @@ import androidx.lifecycle.MutableLiveData
 import com.cafetone.audio.MainActivity
 import com.cafetone.audio.R
 import com.cafetone.audio.analytics.AnalyticsManager
+import com.cafetone.audio.dsp.CafeModeDSP
 import com.cafetone.audio.engagement.UserEngagementManager
 import com.cafetone.audio.playstore.PlayStoreIntegration
-import com.cafetone.audio.update.UpdateManager
-import com.cafetone.audio.dsp.CafeModeDSP
 import com.cafetone.audio.system.AudioPolicyManager
+import com.cafetone.audio.update.UpdateManager
 import java.lang.reflect.Method
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -43,10 +43,10 @@ class CafeModeService : Service() {
     private var audioEffect: AudioEffect? = null
     private var isServiceRunning = false
     private lateinit var shizukuIntegration: ShizukuIntegration
-    
+
     // Sony Café Mode DSP Engine
     private var cafeModeDSP: CafeModeDSP? = null
-    
+
     // Global Audio Processing Manager
     private var audioPolicyManager: AudioPolicyManager? = null
 
@@ -71,47 +71,47 @@ class CafeModeService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        
+
         // Initialize advanced features
         analyticsManager = AnalyticsManager(this)
         engagementManager = UserEngagementManager(this)
         playStoreIntegration = PlayStoreIntegration(this)
         updateManager = UpdateManager(this)
-        
+
         // Initialize all systems
         analyticsManager.initialize()
         playStoreIntegration.initialize()
         updateManager.initialize()
-        
+
         // Initialize Shizuku and DSP
         shizukuIntegration = ShizukuIntegration(this)
         shizukuIntegration.initialize { onShizukuStatusChanged() }
-        
+
         // Initialize Sony Café Mode DSP
         initializeCafeModeDSP()
-        
+
         // Initialize global audio processing
         initializeGlobalAudioProcessing()
-        
+
         createNotificationChannel()
         updateStatus()
-        
+
         Log.i(TAG, "CafeModeService created with advanced features and global processing")
     }
-    
+
     private fun initializeCafeModeDSP() {
         try {
             cafeModeDSP = CafeModeDSP()
             val result = cafeModeDSP?.init()
-            
+
             if (result == 0) {
                 Log.i(TAG, "Sony Café Mode DSP initialized successfully")
-                
+
                 // Set default parameters
                 cafeModeDSP?.setIntensity(intensity)
                 cafeModeDSP?.setSpatialWidth(spatialWidth)
                 cafeModeDSP?.setDistance(distance)
-                
+
             } else {
                 Log.e(TAG, "Failed to initialize Sony Café Mode DSP: $result")
                 cafeModeDSP = null
@@ -122,36 +122,29 @@ class CafeModeService : Service() {
             analyticsManager.trackCrash(e, "DSP Initialization")
         }
     }
-    
+
     private fun initializeGlobalAudioProcessing() {
         try {
-            audioPolicyManager = AudioPolicyManager(this)
-            audioPolicyManager?.initialize()
-            
-            // Set up audio processing callback to route through Sony DSP
-            audioPolicyManager?.setAudioProcessingCallback { audioBuffer, sampleCount ->
-                processAudioThroughSonyDSP(audioBuffer, sampleCount)
-            }
-            
-            Log.i(TAG, "Global audio processing initialized successfully")
+            // FIX: I advised removing this earlier. We will remove it now.
+            // audioPolicyManager = AudioPolicyManager(this)
+            // audioPolicyManager?.initialize()
+            // audioPolicyManager?.setAudioProcessingCallback { audioBuffer, sampleCount ->
+            //     processAudioThroughSonyDSP(audioBuffer, sampleCount)
+            // }
+            Log.i(TAG, "Global audio processing will be handled by AudioEffect, not AudioPolicyManager.")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to initialize global audio processing", e)
             audioPolicyManager = null
             analyticsManager.trackCrash(e, "Global Audio Processing Initialization")
         }
     }
-    
+
     private fun processAudioThroughSonyDSP(audioBuffer: FloatArray, sampleCount: Int) {
         if (!isEnabled || cafeModeDSP == null) return
-        
+
         try {
-            // Process audio through Sony Café Mode DSP
-            // Note: This is a simplified integration - actual implementation would require
-            // proper buffer management and format conversion
-            
-            // Apply Sony DSP processing here
-            // The native DSP engine handles the complete processing chain
-            
+            // This logic would be part of AudioPolicyManager, which is being removed.
+            // The native C++ process callback is called automatically by AudioFlinger.
         } catch (e: Exception) {
             Log.e(TAG, "Error processing audio through Sony DSP", e)
         }
@@ -160,17 +153,17 @@ class CafeModeService : Service() {
     private fun onShizukuStatusChanged() {
         val granted = shizukuIntegration.isPermissionGranted
         Log.d(TAG, "onShizukuStatusChanged called. isPermissionGranted = $granted")
-        
+
         if (granted) {
             Log.d(TAG, "Shizuku permission granted, setting up global audio processing")
             shizukuIntegration.grantAudioPermissions()
             setupAudioEffect()
-            
-            // Start global audio processing
-            audioPolicyManager?.registerGlobalAudioProcessor()
-            audioPolicyManager?.startGlobalAudioInterception()
+
+            // FIX: Removed calls to the deleted AudioPolicyManager
+            // audioPolicyManager?.registerGlobalAudioProcessor()
+            // audioPolicyManager?.startGlobalAudioInterception()
         }
-        
+
         updateStatus()
         analyticsManager.trackShizukuSetup(granted)
     }
@@ -201,13 +194,13 @@ class CafeModeService : Service() {
         shizukuIntegration.cleanup()
         super.onDestroy()
     }
-    
+
     private fun releaseCafeModeDSP() {
         cafeModeDSP?.release()
         cafeModeDSP = null
         Log.i(TAG, "Sony Café Mode DSP released")
     }
-    
+
     private fun releaseGlobalAudioProcessing() {
         audioPolicyManager?.stopGlobalAudioInterception()
         audioPolicyManager?.cleanup()
@@ -232,32 +225,35 @@ class CafeModeService : Service() {
 
     private fun setupGlobalAudioEffect() {
         try {
-            // USE GLOBAL SESSION (0) - This intercepts ALL audio streams
-            audioEffect = AudioEffect(
-                EFFECT_UUID_CAFETONE,           // Our Sony DSP effect
-                AudioEffect.EFFECT_TYPE_NULL,   // Base type
-                0,                              // Priority
-                0                               // Session 0 = GLOBAL (KEY CHANGE!)
-            )
-            
+            audioEffect = AudioEffect.Builder()
+                .setEffectUuid(EFFECT_UUID_CAFETONE)
+                .setAudioSessionId(0) // Session 0 = GLOBAL
+                .build()
+
             audioEffect?.let {
                 it.enabled = isEnabled
                 setAllParams()
                 Log.i(TAG, "Global AudioEffect enabled - processing ALL apps")
-            } ?: throw Exception("Failed to create global AudioEffect")
-            
+            } ?: throw Exception("Failed to create global AudioEffect using Builder")
+
         } catch (e: Exception) {
             Log.e(TAG, "Failed to create global AudioEffect", e)
             throw e
         }
     }
-    
+
     private fun setupFallbackAudioEffect() {
         try {
             val descriptors = AudioEffect.queryEffects()
-            val cafeToneDescriptor = descriptors?.find { it.uuid == EFFECT_UUID_CAFETONE }
-            audioEffect = cafeToneDescriptor?.let { createAudioEffect(it.type, it.uuid) }
-                ?: createAudioEffect(AudioEffect.EFFECT_TYPE_EQUALIZER, null)
+            val cafeToneDescriptor = descriptors.find { it.uuid == EFFECT_UUID_CAFETONE }
+
+            val builder = AudioEffect.Builder()
+            if (cafeToneDescriptor != null) {
+                builder.setEffectUuid(cafeToneDescriptor.uuid)
+            } else {
+                builder.setEffectUuid(AudioEffect.EFFECT_TYPE_EQUALIZER)
+            }
+            audioEffect = builder.setAudioSessionId(0).build()
 
             audioEffect?.let {
                 it.enabled = isEnabled
@@ -272,6 +268,7 @@ class CafeModeService : Service() {
 
     @SuppressLint("DiscouragedPrivateApi")
     private fun createAudioEffect(type: UUID, uuid: UUID?): AudioEffect? {
+        // This reflection-based method is less stable. The Builder pattern is preferred.
         return try {
             val constructor = AudioEffect::class.java.getConstructor(UUID::class.java, UUID::class.java, Int::class.javaPrimitiveType, Int::class.javaPrimitiveType)
             constructor.newInstance(type, uuid ?: type, 0, 0)
@@ -286,20 +283,19 @@ class CafeModeService : Service() {
     }
 
     private fun setEffectParam(paramId: Int, value: Float) {
-        // Set parameters on both AudioEffect and Sony DSP
         audioEffect?.let { effect ->
             try {
                 if (!effect.hasControl()) return
                 val paramBuffer = ByteBuffer.allocate(4).order(ByteOrder.nativeOrder()).putInt(paramId).array()
                 val valueBuffer = ByteBuffer.allocate(4).order(ByteOrder.nativeOrder()).putFloat(value).array()
-                val method: Method = AudioEffect::class.java.getMethod("setParameter", ByteArray::class.java, ByteArray::class.java)
-                method.invoke(effect, paramBuffer, valueBuffer)
+
+                effect.setParameter(paramBuffer, valueBuffer)
+
             } catch (e: Exception) {
-                // Ignore reflection errors
+                Log.e(TAG, "Failed to set parameter on AudioEffect", e)
             }
         }
-        
-        // Also set on Sony Café Mode DSP
+
         cafeModeDSP?.let { dsp ->
             when (paramId) {
                 0 -> dsp.setIntensity(value)
@@ -317,28 +313,24 @@ class CafeModeService : Service() {
 
     fun toggleCafeMode() {
         if (!shizukuIntegration.isPermissionGranted) return
-        
+
         val newIsEnabledState = !isEnabled
         isEnabled = newIsEnabledState
-        
-        // Update AudioEffect
+
         audioEffect?.enabled = newIsEnabledState
-        
-        // Update Sony Café Mode DSP
         cafeModeDSP?.setEnabled(newIsEnabledState)
-        
+
         updateStatus(isEnabled = newIsEnabledState)
-        
-        // Track usage and check for milestones
+
         if (newIsEnabledState) {
             val milestoneReached = engagementManager.trackCafeModeUsage()
             analyticsManager.trackCafeModeUsage(true, intensity, spatialWidth, distance)
-            
+
             if (milestoneReached) {
                 Log.i(TAG, "User reached a new milestone!")
             }
         }
-        
+
         Log.i(TAG, "Sony Café Mode ${if (newIsEnabledState) "enabled" else "disabled"}")
     }
 
@@ -367,7 +359,6 @@ class CafeModeService : Service() {
     fun getSpatialWidth(): Float = spatialWidth
     fun getDistance(): Float = distance
 
-    // Advanced feature accessors
     fun getAnalyticsManager(): AnalyticsManager = analyticsManager
     fun getEngagementManager(): UserEngagementManager = engagementManager
     fun getPlayStoreIntegration(): PlayStoreIntegration = playStoreIntegration

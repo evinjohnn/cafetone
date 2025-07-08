@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "532279280411",
+    "project_id": "cafetone-72a4b",
+    "storage_bucket": "cafetone-72a4b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:532279280411:android:c20c6f46ab29c592b009be",
+        "android_client_info": {
+          "package_name": "com.cafetone.audio"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDnWzJOc39aVB3m7pnBQ99uTuFili9aREI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

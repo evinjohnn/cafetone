@@ -15,7 +15,7 @@ import com.google.firebase.remoteconfig.FirebaseRemoteConfig
 import com.google.firebase.remoteconfig.ktx.remoteConfig
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.remoteconfig.ktx.remoteConfigSettings
-import com.cafetone.audio.BuildConfig
+import com.cafetone.audio.BuildConfig // <-- FIX: Add missing import
 import com.cafetone.audio.R
 
 /**
@@ -27,7 +27,7 @@ class UpdateManager(private val context: Context) {
     companion object {
         private const val TAG = "UpdateManager"
         private const val UPDATE_REQUEST_CODE = 1001
-        
+
         // Remote Config keys
         private const val KEY_FORCE_UPDATE_VERSION = "force_update_version"
         private const val KEY_RECOMMENDED_UPDATE_VERSION = "recommended_update_version"
@@ -36,7 +36,7 @@ class UpdateManager(private val context: Context) {
         private const val KEY_UPDATE_FEATURES = "update_features"
         private const val KEY_ENABLE_UPDATE_NOTIFICATIONS = "enable_update_notifications"
         private const val KEY_UPDATE_CHECK_INTERVAL_HOURS = "update_check_interval_hours"
-        
+
         // Preferences
         private const val PREFS_UPDATE = "update_prefs"
         private const val KEY_LAST_UPDATE_CHECK = "last_update_check"
@@ -47,7 +47,7 @@ class UpdateManager(private val context: Context) {
     private val appUpdateManager: AppUpdateManager = AppUpdateManagerFactory.create(context)
     private val remoteConfig: FirebaseRemoteConfig = Firebase.remoteConfig
     private val prefs = context.getSharedPreferences(PREFS_UPDATE, Context.MODE_PRIVATE)
-    
+
     init {
         setupRemoteConfig()
     }
@@ -56,9 +56,9 @@ class UpdateManager(private val context: Context) {
         val configSettings = remoteConfigSettings {
             minimumFetchIntervalInSeconds = 3600 // 1 hour for production, can be 0 for debug
         }
-        
+
         remoteConfig.setConfigSettingsAsync(configSettings)
-        
+
         // Set default values
         val defaults = mapOf(
             KEY_FORCE_UPDATE_VERSION to 0L,
@@ -69,7 +69,7 @@ class UpdateManager(private val context: Context) {
             KEY_ENABLE_UPDATE_NOTIFICATIONS to true,
             KEY_UPDATE_CHECK_INTERVAL_HOURS to 24L
         )
-        
+
         remoteConfig.setDefaultsAsync(defaults)
     }
 
@@ -92,14 +92,14 @@ class UpdateManager(private val context: Context) {
                 }
             }
     }
-    
+
     /**
      * Check for updates using both Play Store and Remote Config
      */
     fun checkForUpdates(activity: Activity) {
         // First check Play Store updates
         checkPlayStoreUpdate(activity)
-        
+
         // Then check remote config for additional update logic
         checkForUpdatesWithRemoteConfig()
     }
@@ -109,11 +109,11 @@ class UpdateManager(private val context: Context) {
             .addOnSuccessListener { appUpdateInfo ->
                 if (appUpdateInfo.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE) {
                     Log.i(TAG, "Play Store update available")
-                    
+
                     // Check if immediate update is required
                     val forceUpdateVersion = remoteConfig.getLong(KEY_FORCE_UPDATE_VERSION)
                     val currentVersion = BuildConfig.VERSION_CODE.toLong()
-                    
+
                     if (currentVersion < forceUpdateVersion) {
                         // Force immediate update
                         startImmediateUpdate(activity, appUpdateInfo)
@@ -134,9 +134,9 @@ class UpdateManager(private val context: Context) {
         val currentVersion = BuildConfig.VERSION_CODE.toLong()
         val forceUpdateVersion = remoteConfig.getLong(KEY_FORCE_UPDATE_VERSION)
         val recommendedUpdateVersion = remoteConfig.getLong(KEY_RECOMMENDED_UPDATE_VERSION)
-        
+
         Log.d(TAG, "Version check - Current: $currentVersion, Force: $forceUpdateVersion, Recommended: $recommendedUpdateVersion")
-        
+
         when {
             currentVersion < forceUpdateVersion -> {
                 Log.i(TAG, "Force update required")
@@ -154,11 +154,11 @@ class UpdateManager(private val context: Context) {
                 Log.d(TAG, "App is up to date")
             }
         }
-        
+
         // Update last check time
         prefs.edit().putLong(KEY_LAST_UPDATE_CHECK, System.currentTimeMillis()).apply()
     }
-    
+
     private fun startImmediateUpdate(activity: Activity, appUpdateInfo: AppUpdateInfo) {
         try {
             appUpdateManager.startUpdateFlowForResult(
@@ -176,7 +176,7 @@ class UpdateManager(private val context: Context) {
         val title = remoteConfig.getString(KEY_UPDATE_TITLE)
         val message = remoteConfig.getString(KEY_UPDATE_MESSAGE)
         val features = remoteConfig.getString(KEY_UPDATE_FEATURES)
-        
+
         AlertDialog.Builder(activity)
             .setTitle(title)
             .setMessage("$message\n\n🎵 What's New:\n$features")
@@ -211,12 +211,12 @@ class UpdateManager(private val context: Context) {
         if (!remoteConfig.getBoolean(KEY_ENABLE_UPDATE_NOTIFICATIONS)) {
             return
         }
-        
+
         val notificationEnabled = prefs.getBoolean(KEY_UPDATE_NOTIFICATION_ENABLED, true)
         if (!notificationEnabled) {
             return
         }
-        
+
         Log.i(TAG, "Recommended update notification would be shown here")
         // This will be handled by FCM when the notification is sent from server
     }
@@ -225,13 +225,13 @@ class UpdateManager(private val context: Context) {
         val lastCheck = prefs.getLong(KEY_LAST_UPDATE_CHECK, 0)
         val intervalHours = remoteConfig.getLong(KEY_UPDATE_CHECK_INTERVAL_HOURS)
         val intervalMs = intervalHours * 60 * 60 * 1000
-        
+
         if (System.currentTimeMillis() - lastCheck > intervalMs) {
             Log.d(TAG, "Scheduled update check triggered")
             checkForUpdatesWithRemoteConfig()
         }
     }
-    
+
     private fun openPlayStore(activity: Activity) {
         try {
             val playStoreIntent = Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=${context.packageName}"))
@@ -300,7 +300,7 @@ class UpdateManager(private val context: Context) {
         val forceUpdateVersion = remoteConfig.getLong(KEY_FORCE_UPDATE_VERSION)
         val recommendedUpdateVersion = remoteConfig.getLong(KEY_RECOMMENDED_UPDATE_VERSION)
         val lastCheck = prefs.getLong(KEY_LAST_UPDATE_CHECK, 0)
-        
+
         return when {
             currentVersion < forceUpdateVersion -> "Force Update Required"
             currentVersion < recommendedUpdateVersion -> "Update Recommended"

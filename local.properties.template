@@ -1,9 +1,9 @@
 # Location of the Android SDK. This is only used by Gradle.
 # For customization when using a Version Control System, please read the
 # header note.
-# sdk.dir=C\:\\Users\\YourUsername\\AppData\\Local\\Android\\Sdk
-# ndk.dir=C\:\\Users\\YourUsername\\AppData\\Local\\Android\\Sdk\\ndk\\25.2.9519653
+sdk.dir=C\:\\Users\\YourUsername\\AppData\\Local\\Android\\Sdk
 
-# Note: Replace the paths above with your actual Android SDK and NDK paths
+# Note: Replace the path above with your actual Android SDK path
 # For Windows, use double backslashes (\\) or forward slashes (/)
 # For macOS/Linux, use forward slashes (/)
+# The NDK version should be specified in app/build.gradle instead of here.

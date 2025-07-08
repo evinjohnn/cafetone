@@ -30,6 +30,7 @@ import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.analytics.ktx.analytics
 import com.google.firebase.analytics.ktx.logEvent
 import com.google.firebase.ktx.Firebase
+import com.cafetone.audio.BuildConfig // <-- FIX: Add missing import
 
 class MainActivity : AppCompatActivity() {
 
@@ -46,7 +47,7 @@ class MainActivity : AppCompatActivity() {
     private var isBound = false
     private lateinit var firebaseAnalytics: FirebaseAnalytics
     private lateinit var sharedPreferences: SharedPreferences
-    
+
     // Advanced features (accessed via service)
     private var analyticsManager: AnalyticsManager? = null
     private var engagementManager: UserEngagementManager? = null
@@ -75,16 +76,16 @@ class MainActivity : AppCompatActivity() {
 
             cafeModeService?.status?.observe(this@MainActivity, statusObserver)
             updateSliderUI()
-            
+
             // Show first-time tutorial if needed
             engagementManager?.showFirstTimeTutorial()
-            
+
             // Check for app updates
             updateManager?.checkForUpdates(this@MainActivity)
-            
+
             // Request review if appropriate
             playStoreIntegration?.requestReviewIfAppropriate(this@MainActivity)
-            
+
             Log.i(TAG, "Advanced features initialized")
         }
 
@@ -114,33 +115,33 @@ class MainActivity : AppCompatActivity() {
             // Create a dummy analytics instance to prevent crashes
             firebaseAnalytics = Firebase.analytics
         }
-        
+
         // Initialize SharedPreferences
         sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
         setupEventListeners()
         checkPermissions()
-        
+
         // Handle intent from notification
         handleNotificationIntent(intent)
-        
+
         // Check for first launch and show GitHub star dialog
         checkFirstLaunch()
 
         val serviceIntent = Intent(this, CafeModeService::class.java)
         ContextCompat.startForegroundService(this, serviceIntent)
         bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE)
-        
+
         // Log app launch event
         firebaseAnalytics.logEvent("app_launch") {
             param("version", BuildConfig.VERSION_NAME)
             param("version_code", BuildConfig.VERSION_CODE.toLong())
         }
-        
+
         Log.i(TAG, "MainActivity created")
     }
 
-    override fun onNewIntent(intent: Intent?) {
+    override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handleNotificationIntent(intent)
     }
@@ -151,7 +152,7 @@ class MainActivity : AppCompatActivity() {
                 "check_update" -> {
                     // User clicked update notification
                     updateManager?.forceRefresh(this)
-                    
+
                     firebaseAnalytics.logEvent("notification_action") {
                         param("action_type", "check_update")
                     }
@@ -160,7 +161,7 @@ class MainActivity : AppCompatActivity() {
                     // User clicked feature announcement
                     val feature = it.getStringExtra("feature")
                     showFeatureHighlight(feature)
-                    
+
                     firebaseAnalytics.logEvent("notification_action") {
                         param("action_type", "show_feature")
                         param("feature", feature ?: "unknown")
@@ -172,7 +173,7 @@ class MainActivity : AppCompatActivity() {
                         // Suggest enabling café mode
                         showCafeModeEngagementDialog()
                     }
-                    
+
                     firebaseAnalytics.logEvent("notification_action") {
                         param("action_type", "engagement")
                     }
@@ -204,7 +205,7 @@ class MainActivity : AppCompatActivity() {
             .setPositiveButton("Enable Café Mode") { _, _ ->
                 binding.toggleCafeMode.isChecked = true
                 cafeModeService?.toggleCafeMode()
-                
+
                 firebaseAnalytics.logEvent("engagement_cafe_mode_enabled") {
                     param("source", "notification_dialog")
                 }
@@ -223,12 +224,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun checkFirstLaunch() {
         val isFirstLaunch = sharedPreferences.getBoolean(KEY_FIRST_LAUNCH, true)
-        
+
         if (isFirstLaunch) {
             showGitHubStarDialog()
             // Mark as not first launch anymore
             sharedPreferences.edit().putBoolean(KEY_FIRST_LAUNCH, false).apply()
-            
+
             // Log first launch event
             firebaseAnalytics.logEvent("first_launch") {
                 param("timestamp", System.currentTimeMillis())
@@ -242,7 +243,7 @@ class MainActivity : AppCompatActivity() {
             .setMessage("Enjoying the app? Please consider starring the project on GitHub. It's a free way to show your support!")
             .setPositiveButton("Star on GitHub") { _, _ ->
                 openGitHubUrl()
-                
+
                 // Log GitHub star button click
                 firebaseAnalytics.logEvent("github_star_clicked") {
                     param("source", "first_launch_dialog")
@@ -265,7 +266,7 @@ class MainActivity : AppCompatActivity() {
         } catch (e: Exception) {
             Log.e(TAG, "Failed to open GitHub URL", e)
             Toast.makeText(this, "Failed to open GitHub page", Toast.LENGTH_SHORT).show()
-            
+
             // Log error
             firebaseAnalytics.logEvent("github_open_failed") {
                 param("error", e.message ?: "unknown")
@@ -277,12 +278,12 @@ class MainActivity : AppCompatActivity() {
         binding.toggleCafeMode.setOnCheckedChangeListener { _, isChecked ->
             if (binding.toggleCafeMode.isPressed) {
                 cafeModeService?.toggleCafeMode()
-                
+
                 // Log cafe mode toggle event to Firebase
                 firebaseAnalytics.logEvent("cafe_mode_toggled") {
-                    param("enabled", isChecked)
+                    param("enabled", isChecked.toString())
                 }
-                
+
                 // Log toggle event to internal analytics
                 analyticsManager?.logEvent(AnalyticsManager.EVENT_CAFE_MODE_TOGGLE, mapOf(
                     "enabled" to isChecked
@@ -294,7 +295,7 @@ class MainActivity : AppCompatActivity() {
             if (fromUser) {
                 cafeModeService?.setIntensity(value / 100f)
                 updateIntensityLabel(value.toInt())
-                
+
                 // Log slider adjustment to Firebase
                 firebaseAnalytics.logEvent("slider_adjusted") {
                     param("slider_name", "intensity")
@@ -302,12 +303,12 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
-        
+
         binding.sliderSpatialWidth.addOnChangeListener { _, value, fromUser ->
             if (fromUser) {
                 cafeModeService?.setSpatialWidth(value / 100f)
                 updateSpatialWidthLabel(value.toInt())
-                
+
                 // Log slider adjustment to Firebase
                 firebaseAnalytics.logEvent("slider_adjusted") {
                     param("slider_name", "spatial_width")
@@ -315,12 +316,12 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
-        
+
         binding.sliderDistance.addOnChangeListener { _, value, fromUser ->
             if (fromUser) {
                 cafeModeService?.setDistance(value / 100f)
                 updateDistanceLabel(value.toInt())
-                
+
                 // Log slider adjustment to Firebase
                 firebaseAnalytics.logEvent("slider_adjusted") {
                     param("slider_name", "distance")
@@ -332,30 +333,30 @@ class MainActivity : AppCompatActivity() {
         binding.btnRefreshStatus.setOnClickListener {
             Toast.makeText(this, "Refreshing Shizuku status...", Toast.LENGTH_SHORT).show()
             cafeModeService?.forceShizukuCheck()
-            
+
             // Log refresh action
             firebaseAnalytics.logEvent("status_refresh_clicked") {}
         }
 
-        binding.btnShizukuSetup.setOnClickListener { 
+        binding.btnShizukuSetup.setOnClickListener {
             showShizukuSetupDialog()
-            
+
             // Log Shizuku setup button click
             firebaseAnalytics.logEvent("shizuku_setup_clicked") {}
             analyticsManager?.logEvent(AnalyticsManager.EVENT_SHIZUKU_SETUP, mapOf("manual_trigger" to true))
         }
-        
-        binding.btnInfo.setOnClickListener { 
+
+        binding.btnInfo.setOnClickListener {
             showInfoDialog()
-            
+
             // Log about button click
             firebaseAnalytics.logEvent("about_clicked") {}
             analyticsManager?.logEvent(AnalyticsManager.EVENT_ABOUT_OPENED)
         }
-        
+
         binding.btnSettings.setOnClickListener {
             showSettingsDialog()
-            
+
             // Log settings button click
             firebaseAnalytics.logEvent("settings_clicked") {}
             analyticsManager?.logEvent(AnalyticsManager.EVENT_SETTINGS_OPENED)
@@ -396,7 +397,7 @@ class MainActivity : AppCompatActivity() {
                 binding.ivStatusIcon.setImageResource(R.drawable.ic_warning)
                 binding.tvStatusSubtitle.visibility = View.VISIBLE
                 binding.tvStatusSubtitle.text = status.shizukuMessage
-                
+
                 // Show Shizuku tutorial if not ready
                 engagementManager?.showShizukuTutorial()
             }
@@ -454,7 +455,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun showInfoDialog() {
         val dspInfo = cafeModeService?.getCafeModeDSP()?.getStatusInfo() ?: "DSP Not Available"
-        
+
         androidx.appcompat.app.AlertDialog.Builder(this)
             .setTitle("About Sony Café Mode")
             .setMessage("""
@@ -472,7 +473,7 @@ class MainActivity : AppCompatActivity() {
             }
             .setNegativeButton("Star on GitHub") { _, _ ->
                 openGitHubUrl()
-                
+
                 // Log GitHub star button click from about dialog
                 firebaseAnalytics.logEvent("github_star_clicked") {
                     param("source", "about_dialog")
@@ -484,7 +485,7 @@ class MainActivity : AppCompatActivity() {
     private fun showSettingsDialog() {
         val usageStats = analyticsManager?.getUsageStatistics()
         val engagementStats = engagementManager?.getEngagementStats()
-        
+
         androidx.appcompat.app.AlertDialog.Builder(this)
             .setTitle("CaféTone Settings")
             .setMessage("""
@@ -509,18 +510,18 @@ class MainActivity : AppCompatActivity() {
             }
             .show()
     }
-    
+
     private fun getAchievementCount(stats: com.cafetone.audio.engagement.EngagementStats?): String {
         if (stats == null) return "0"
-        
+
         val achievements = mutableListOf<String>()
         if (stats.milestone5Uses) achievements.add("Café Enthusiast")
-        if (stats.milestone25Uses) achievements.add("Café Regular")  
+        if (stats.milestone25Uses) achievements.add("Café Regular")
         if (stats.milestone100Uses) achievements.add("Café Master")
-        
+
         return if (achievements.isEmpty()) "None yet" else achievements.joinToString(", ")
     }
-    
+
     private fun shareText(title: String, text: String) {
         try {
             val intent = Intent(Intent.ACTION_SEND).apply {
@@ -537,30 +538,30 @@ class MainActivity : AppCompatActivity() {
 
     private fun runGlobalProcessingTests() {
         Toast.makeText(this, "Running global audio processing tests...", Toast.LENGTH_SHORT).show()
-        
+
         // Log test execution
         firebaseAnalytics.logEvent("global_processing_test_started") {}
-        
+
         Thread {
             val testSuite = GlobalAudioProcessingTest(this)
             val results = testSuite.runCompleteTestSuite()
-            
+
             runOnUiThread {
                 showTestResults(results)
             }
         }.start()
     }
-    
+
     private fun showTestResults(results: GlobalAudioProcessingTest.TestResults) {
         val statusIcon = if (results.overallSuccessRate >= 80.0f) "✅" else "⚠️"
         val status = if (results.overallSuccessRate >= 80.0f) "READY" else "NEEDS SETUP"
-        
+
         // Log test results
         firebaseAnalytics.logEvent("global_processing_test_completed") {
             param("success_rate", results.overallSuccessRate.toDouble())
             param("status", status)
         }
-        
+
         androidx.appcompat.app.AlertDialog.Builder(this)
             .setTitle("$statusIcon Global Processing Test Results")
             .setMessage("""
@@ -570,14 +571,13 @@ class MainActivity : AppCompatActivity() {
                 ${if (results.globalEffectCreation) "✅" else "❌"} Global AudioEffect Creation
                 ${if (results.effectRegistration) "✅" else "❌"} Effect Registration  
                 ${if (results.realTimeLatency) "✅" else "❌"} Real-Time Latency (<10ms)
-                ${if (results.globalAudioPolicy) "✅" else "❌"} Global Audio Policy
                 ${if (results.streamInterception) "✅" else "❌"} Stream Interception
                 ${if (results.spotifyCompatibility) "✅" else "❌"} Spotify Compatibility
                 
-                ${if (results.overallSuccessRate >= 80.0f) 
-                    "🎉 CaféTone is working like Wavelet/RootlessJamesDSP!" 
-                else 
-                    "Configure Shizuku permissions for full functionality."}
+                ${if (results.overallSuccessRate >= 80.0f)
+                "🎉 CaféTone is working like Wavelet/RootlessJamesDSP!"
+            else
+                "Configure Shizuku permissions for full functionality."}
             """.trimIndent())
             .setPositiveButton("OK", null)
             .setNeutralButton("Share Results") { _, _ ->
@@ -586,16 +586,16 @@ class MainActivity : AppCompatActivity() {
             }
             .show()
     }
-    
+
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        
+
         if (requestCode == PERMISSION_REQUEST_CODE) {
             val allGranted = grantResults.all { it == PackageManager.PERMISSION_GRANTED }
             if (allGranted) {
                 Log.i(TAG, "All permissions granted")
                 Toast.makeText(this, "Permissions granted! CaféTone is ready.", Toast.LENGTH_SHORT).show()
-                
+
                 // Log permissions granted
                 firebaseAnalytics.logEvent("permissions_granted") {
                     param("count", permissions.size.toLong())
@@ -603,7 +603,7 @@ class MainActivity : AppCompatActivity() {
             } else {
                 Log.w(TAG, "Some permissions denied")
                 Toast.makeText(this, "Some permissions denied. App may not work properly.", Toast.LENGTH_LONG).show()
-                
+
                 // Log permissions denied
                 firebaseAnalytics.logEvent("permissions_denied") {
                     param("denied_count", grantResults.count { it != PackageManager.PERMISSION_GRANTED }.toLong())
