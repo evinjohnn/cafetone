@@ -24,6 +24,7 @@ import com.cafetone.audio.analytics.AnalyticsManager
 import com.cafetone.audio.engagement.UserEngagementManager
 import com.cafetone.audio.playstore.PlayStoreIntegration
 import com.cafetone.audio.update.UpdateManager
+import com.cafetone.audio.test.GlobalAudioProcessingTest
 
 class MainActivity : AppCompatActivity() {
 
