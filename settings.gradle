@@ -6,18 +6,14 @@ pluginManagement {
     }
 }
 
-// ADD THIS ENTIRE BLOCK
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
         google()
         mavenCentral()
-        // The jitpack repository is needed for the Shizuku dependency
         maven { url 'https://jitpack.io' }
     }
 }
-// END OF BLOCK TO ADD
 
 rootProject.name = "CaféTone"
-include ':app'
 include ':app'

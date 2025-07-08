@@ -11,6 +11,7 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.cafetone.audio.MainActivity
@@ -25,7 +26,7 @@ data class AppStatus(val isEnabled: Boolean, val shizukuMessage: String, val isS
 class CafeModeService : Service() {
 
     companion object {
-        private const val TAG = "CafeModeService"
+        private const val TAG = "CafeToneService" // Corrected Logcat Tag
         private const val NOTIFICATION_ID = 1001
         private const val CHANNEL_ID = "cafetone_channel"
         private val EFFECT_UUID_CAFETONE = UUID.fromString("87654321-4321-8765-4321-fedcba098765")
@@ -57,11 +58,19 @@ class CafeModeService : Service() {
     }
 
     private fun onShizukuStatusChanged() {
-        if (shizukuIntegration.isPermissionGranted) { // <-- LOGIC FIX
+        val granted = shizukuIntegration.isPermissionGranted
+        Log.d(TAG, "onShizukuStatusChanged called. isPermissionGranted = $granted")
+        if (granted) {
+            Log.d(TAG, "Permission is granted, now granting audio permissions and setting up effect.")
             shizukuIntegration.grantAudioPermissions()
             setupAudioEffect()
         }
         updateStatus()
+    }
+
+    fun forceShizukuCheck() {
+        Log.d(TAG, "Manual refresh triggered from UI.")
+        shizukuIntegration.checkShizukuAvailability()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -84,7 +93,7 @@ class CafeModeService : Service() {
     }
 
     private fun setupAudioEffect() {
-        if (!shizukuIntegration.isPermissionGranted) return // <-- LOGIC FIX
+        if (!shizukuIntegration.isPermissionGranted) return
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.MODIFY_AUDIO_SETTINGS) != PackageManager.PERMISSION_GRANTED) return
 
         try {
@@ -139,7 +148,7 @@ class CafeModeService : Service() {
     }
 
     fun toggleCafeMode() {
-        if (!shizukuIntegration.isPermissionGranted) return // <-- LOGIC FIX
+        if (!shizukuIntegration.isPermissionGranted) return
         val newIsEnabledState = !(_status.value?.isEnabled ?: false)
         audioEffect?.enabled = newIsEnabledState
         updateStatus(isEnabled = newIsEnabledState)
@@ -166,7 +175,7 @@ class CafeModeService : Service() {
 
     private fun updateStatus(isEnabled: Boolean = _status.value?.isEnabled ?: false) {
         val shizukuMessage = shizukuIntegration.getStatusMessage()
-        val shizukuReady = shizukuIntegration.isPermissionGranted // <-- LOGIC FIX
+        val shizukuReady = shizukuIntegration.isPermissionGranted
         _status.postValue(AppStatus(isEnabled, shizukuMessage, shizukuReady))
         updateNotification()
     }

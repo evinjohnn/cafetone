@@ -7,7 +7,7 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.content.pm.PackageManager
 import android.net.Uri
-import android.os.Build // <-- IMPORT ADDED
+import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
@@ -46,15 +46,11 @@ class MainActivity : AppCompatActivity() {
             isBound = true
             Log.i(TAG, "Service connected")
 
-            // Start observing the status
             cafeModeService?.status?.observe(this@MainActivity, statusObserver)
-
-            // Update sliders to match service state
             updateSliderUI()
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
-            // Stop observing
             cafeModeService?.status?.removeObserver(statusObserver)
             cafeModeService = null
             isBound = false
@@ -70,7 +66,6 @@ class MainActivity : AppCompatActivity() {
         setupEventListeners()
         checkPermissions()
 
-        // Start and bind to the service
         val serviceIntent = Intent(this, CafeModeService::class.java)
         ContextCompat.startForegroundService(this, serviceIntent)
         bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE)
@@ -86,20 +81,33 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupEventListeners() {
         binding.toggleCafeMode.setOnCheckedChangeListener { _, _ ->
-            // Only act if the change is from the user
             if (binding.toggleCafeMode.isPressed) {
                 cafeModeService?.toggleCafeMode()
             }
         }
 
         binding.sliderIntensity.addOnChangeListener { _, value, fromUser ->
-            if (fromUser) cafeModeService?.setIntensity(value / 100f)
+            if (fromUser) {
+                cafeModeService?.setIntensity(value / 100f)
+                updateIntensityLabel(value.toInt())
+            }
         }
         binding.sliderSpatialWidth.addOnChangeListener { _, value, fromUser ->
-            if (fromUser) cafeModeService?.setSpatialWidth(value / 100f)
+            if (fromUser) {
+                cafeModeService?.setSpatialWidth(value / 100f)
+                updateSpatialWidthLabel(value.toInt())
+            }
         }
         binding.sliderDistance.addOnChangeListener { _, value, fromUser ->
-            if (fromUser) cafeModeService?.setDistance(value / 100f)
+            if (fromUser) {
+                cafeModeService?.setDistance(value / 100f)
+                updateDistanceLabel(value.toInt())
+            }
+        }
+
+        binding.btnRefreshStatus.setOnClickListener {
+            Toast.makeText(this, "Refreshing Shizuku status...", Toast.LENGTH_SHORT).show()
+            cafeModeService?.forceShizukuCheck()
         }
 
         binding.btnShizukuSetup.setOnClickListener { showShizukuSetupDialog() }
@@ -114,11 +122,27 @@ class MainActivity : AppCompatActivity() {
             binding.sliderIntensity.value = it.getIntensity() * 100
             binding.sliderSpatialWidth.value = it.getSpatialWidth() * 100
             binding.sliderDistance.value = it.getDistance() * 100
+            updateIntensityLabel((it.getIntensity() * 100).toInt())
+            updateSpatialWidthLabel((it.getSpatialWidth() * 100).toInt())
+            updateDistanceLabel((it.getDistance() * 100).toInt())
         }
+    }
+
+    private fun updateIntensityLabel(value: Int) {
+        binding.tvIntensityValue.text = "$value%"
+    }
+
+    private fun updateSpatialWidthLabel(value: Int) {
+        binding.tvSpatialWidthValue.text = "$value%"
+    }
+
+    private fun updateDistanceLabel(value: Int) {
+        binding.tvDistanceValue.text = "$value%"
     }
 
     private fun updateStatusUI(status: AppStatus) {
         binding.toggleCafeMode.isChecked = status.isEnabled
+        binding.btnRefreshStatus.visibility = if (status.isShizukuReady) View.GONE else View.VISIBLE
 
         when {
             !status.isShizukuReady -> {
@@ -144,12 +168,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkPermissions() {
-        val requiredPermissions = mutableListOf(
-            Manifest.permission.RECORD_AUDIO,
-            Manifest.permission.MODIFY_AUDIO_SETTINGS
-        )
+        val requiredPermissions = mutableListOf(Manifest.permission.RECORD_AUDIO)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             requiredPermissions.add(Manifest.permission.POST_NOTIFICATIONS)
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            requiredPermissions.add(Manifest.permission.FOREGROUND_SERVICE_MICROPHONE)
         }
 
         val permissionsToRequest = requiredPermissions.filter {

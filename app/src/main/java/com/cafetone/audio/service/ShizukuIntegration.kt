@@ -6,7 +6,6 @@ import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import rikka.shizuku.Shizuku
 import java.io.IOException
 
@@ -17,49 +16,63 @@ class ShizukuIntegration(private val context: Context) {
         private const val SHIZUKU_PERMISSION_REQUEST_CODE = 1000
     }
 
-    var isPermissionGranted = false // <-- Public property now
+    var isPermissionGranted = false
         private set
 
     private var isShizukuAvailable = false
-    private var onPermissionGrantedCallback: (() -> Unit)? = null
+    private var onStatusChangedCallback: (() -> Unit)? = null
 
     private val binderDeathRecipient = Shizuku.OnBinderDeadListener {
+        Log.w(TAG, "Shizuku binder died.")
         isShizukuAvailable = false
         isPermissionGranted = false
-        onPermissionGrantedCallback?.invoke()
+        onStatusChangedCallback?.invoke()
     }
 
     private val permissionRequestListener = Shizuku.OnRequestPermissionResultListener { requestCode, grantResult ->
         if (requestCode == SHIZUKU_PERMISSION_REQUEST_CODE) {
-            isPermissionGranted = (grantResult == PackageManager.PERMISSION_GRANTED)
-            onPermissionGrantedCallback?.invoke()
+            if (grantResult == PackageManager.PERMISSION_GRANTED) {
+                Log.d(TAG, "Shizuku permission result: GRANTED by user.")
+                isPermissionGranted = true
+            } else {
+                Log.e(TAG, "Shizuku permission result: DENIED by user.")
+                isPermissionGranted = false
+            }
+            onStatusChangedCallback?.invoke()
         }
     }
 
     fun initialize(onStatusChanged: () -> Unit) {
-        this.onPermissionGrantedCallback = onStatusChanged
+        this.onStatusChangedCallback = onStatusChanged
         Shizuku.addBinderDeadListener(binderDeathRecipient)
         Shizuku.addRequestPermissionResultListener(permissionRequestListener)
         checkShizukuAvailability()
     }
 
-    private fun checkShizukuAvailability() {
+    fun checkShizukuAvailability() {
         try {
+            Log.d(TAG, "Checking Shizuku availability...")
             isShizukuAvailable = Shizuku.pingBinder()
             if (isShizukuAvailable) {
+                Log.d(TAG, "Shizuku binder is active.")
                 if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
+                    Log.d(TAG, "Shizuku permission is ALREADY GRANTED.")
                     isPermissionGranted = true
-                    onPermissionGrantedCallback?.invoke()
                 } else {
+                    Log.d(TAG, "Shizuku permission NOT granted. Requesting it now.")
+                    isPermissionGranted = false
                     Shizuku.requestPermission(SHIZUKU_PERMISSION_REQUEST_CODE)
                 }
             } else {
-                onPermissionGrantedCallback?.invoke()
+                Log.e(TAG, "Shizuku binder is NOT active.")
+                isPermissionGranted = false
             }
         } catch (e: Exception) {
+            Log.e(TAG, "Exception while checking Shizuku.", e)
             isShizukuAvailable = false
-            onPermissionGrantedCallback?.invoke()
+            isPermissionGranted = false
         }
+        onStatusChangedCallback?.invoke()
     }
 
     fun grantAudioPermissions() {
@@ -70,7 +83,10 @@ class ShizukuIntegration(private val context: Context) {
                 arrayOf("pm", "grant", packageName, "android.permission.MODIFY_AUDIO_SETTINGS"),
                 arrayOf("pm", "grant", packageName, "android.permission.DUMP")
             )
-            commands.forEach { executeShizukuCommand(it) }
+            commands.forEach {
+                val result = executeShizukuCommand(it)
+                Log.i(TAG, "${it.joinToString(" ")} result: $result")
+            }
         }
     }
 
