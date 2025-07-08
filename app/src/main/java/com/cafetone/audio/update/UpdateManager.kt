@@ -1,17 +1,26 @@
 package com.cafetone.audio.update
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.util.Log
 import androidx.appcompat.app.AlertDialog
-import org.json.JSONObject
-import java.text.SimpleDateFormat
-import java.util.*
+import com.google.android.play.core.appupdate.AppUpdateInfo
+import com.google.android.play.core.appupdate.AppUpdateManager
+import com.google.android.play.core.appupdate.AppUpdateManagerFactory
+import com.google.android.play.core.install.model.AppUpdateType
+import com.google.android.play.core.install.model.UpdateAvailability
+import com.google.firebase.remoteconfig.FirebaseRemoteConfig
+import com.google.firebase.remoteconfig.ktx.remoteConfig
+import com.google.firebase.ktx.Firebase
+import com.google.firebase.remoteconfig.ktx.remoteConfigSettings
+import com.cafetone.audio.BuildConfig
+import com.cafetone.audio.R
 
 /**
- * Update Manager for CaféTone
- * Handles version checking, changelog display, and update notifications
+ * Enhanced UpdateManager with Firebase Remote Config and Push Notifications
+ * Handles app updates, version checking, and update notifications
  */
 class UpdateManager(private val context: Context) {
     
