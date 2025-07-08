@@ -121,6 +121,9 @@ class MainActivity : AppCompatActivity() {
         setupEventListeners()
         checkPermissions()
         
+        // Handle intent from notification
+        handleNotificationIntent(intent)
+        
         // Check for first launch and show GitHub star dialog
         checkFirstLaunch()
 
@@ -135,6 +138,79 @@ class MainActivity : AppCompatActivity() {
         }
         
         Log.i(TAG, "MainActivity created")
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        handleNotificationIntent(intent)
+    }
+
+    private fun handleNotificationIntent(intent: Intent?) {
+        intent?.let {
+            when (it.getStringExtra("action")) {
+                "check_update" -> {
+                    // User clicked update notification
+                    updateManager?.forceRefresh(this)
+                    
+                    firebaseAnalytics.logEvent("notification_action") {
+                        param("action_type", "check_update")
+                    }
+                }
+                "show_feature" -> {
+                    // User clicked feature announcement
+                    val feature = it.getStringExtra("feature")
+                    showFeatureHighlight(feature)
+                    
+                    firebaseAnalytics.logEvent("notification_action") {
+                        param("action_type", "show_feature")
+                        param("feature", feature ?: "unknown")
+                    }
+                }
+                "engagement" -> {
+                    // User clicked engagement notification
+                    if (!binding.toggleCafeMode.isChecked) {
+                        // Suggest enabling café mode
+                        showCafeModeEngagementDialog()
+                    }
+                    
+                    firebaseAnalytics.logEvent("notification_action") {
+                        param("action_type", "engagement")
+                    }
+                }
+            }
+        }
+    }
+
+    private fun showFeatureHighlight(feature: String?) {
+        when (feature) {
+            "global_processing" -> {
+                Toast.makeText(this, "🎵 Try the new global audio processing!", Toast.LENGTH_LONG).show()
+                // Maybe highlight the toggle or show a tutorial
+            }
+            "new_sliders" -> {
+                Toast.makeText(this, "🎛️ Check out the enhanced audio controls!", Toast.LENGTH_LONG).show()
+                // Maybe highlight the controls section
+            }
+            else -> {
+                Toast.makeText(this, "🎉 Discover new features in CaféTone!", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    private fun showCafeModeEngagementDialog() {
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Transform Your Audio! 🎵")
+            .setMessage("Ready to experience Sony's premium Café Mode audio processing? Enable it now and hear the difference!")
+            .setPositiveButton("Enable Café Mode") { _, _ ->
+                binding.toggleCafeMode.isChecked = true
+                cafeModeService?.toggleCafeMode()
+                
+                firebaseAnalytics.logEvent("engagement_cafe_mode_enabled") {
+                    param("source", "notification_dialog")
+                }
+            }
+            .setNegativeButton("Maybe Later", null)
+            .show()
     }
 
     override fun onDestroy() {
