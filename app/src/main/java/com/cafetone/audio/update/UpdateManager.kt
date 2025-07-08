@@ -94,130 +94,69 @@ class UpdateManager(private val context: Context) {
     }
     
     /**
-     * Show changelog dialog
+     * Check for updates using both Play Store and Remote Config
      */
-    private fun showChangelogDialog(oldVersion: String, newVersion: String) {
-        val changelog = getChangelogForVersion(newVersion)
+    fun checkForUpdates(activity: Activity) {
+        // First check Play Store updates
+        checkPlayStoreUpdate(activity)
         
-        AlertDialog.Builder(context)
-            .setTitle("CaféTone Updated! 🎉")
-            .setMessage("""
-                Welcome to CaféTone $newVersion!
-                
-                $changelog
-                
-                Thank you for using CaféTone! 🎵☕
-            """.trimIndent())
-            .setPositiveButton("Awesome!") { _, _ -> }
-            .setNeutralButton("Share Update") { _, _ ->
-                shareUpdate(newVersion, changelog)
+        // Then check remote config for additional update logic
+        checkForUpdatesWithRemoteConfig()
+    }
+
+    private fun checkPlayStoreUpdate(activity: Activity) {
+        appUpdateManager.appUpdateInfo
+            .addOnSuccessListener { appUpdateInfo ->
+                if (appUpdateInfo.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE) {
+                    Log.i(TAG, "Play Store update available")
+                    
+                    // Check if immediate update is required
+                    val forceUpdateVersion = remoteConfig.getLong(KEY_FORCE_UPDATE_VERSION)
+                    val currentVersion = BuildConfig.VERSION_CODE.toLong()
+                    
+                    if (currentVersion < forceUpdateVersion) {
+                        // Force immediate update
+                        startImmediateUpdate(activity, appUpdateInfo)
+                    } else {
+                        // Show flexible update dialog
+                        showUpdateDialog(activity, appUpdateInfo)
+                    }
+                } else {
+                    Log.d(TAG, "No Play Store update available")
+                }
             }
-            .show()
-        
-        Log.i(TAG, "Changelog shown for version $newVersion")
+            .addOnFailureListener { exception ->
+                Log.e(TAG, "Failed to check for Play Store updates", exception)
+            }
     }
-    
-    /**
-     * Get changelog for specific version
-     */
-    private fun getChangelogForVersion(version: String): String {
-        // In production, this would fetch from server or local changelog file
-        return when {
-            version.startsWith("1.1") -> """
-                ✨ What's New:
-                • Enhanced Sony Café Mode audio effects
-                • Improved spatial audio processing
-                • Better Shizuku integration
-                • Performance optimizations
-                • Bug fixes and stability improvements
-            """.trimIndent()
-            
-            version.startsWith("1.2") -> """
-                🎵 New Features:
-                • Advanced reverb engine with café acoustics
-                • Dynamic multi-band compression
-                • Enhanced distance simulation
-                • Improved user interface
-                • Better Play Store integration
-            """.trimIndent()
-            
-            version.startsWith("1.3") -> """
-                🚀 Major Update:
-                • Complete Sony audio effect chain
-                • Real-time DSP processing
-                • Advanced spatial widening
-                • New user engagement features
-                • Analytics and crash reporting
-            """.trimIndent()
-            
-            else -> """
-                🔧 Updates:
-                • Bug fixes and improvements
-                • Enhanced audio processing
-                • Better user experience
-            """.trimIndent()
-        }
-    }
-    
-    /**
-     * Check for manual updates (via Play Store API or custom endpoint)
-     */
-    fun checkForUpdates(callback: (UpdateInfo?) -> Unit) {
-        val lastCheck = preferences.getLong(KEY_LAST_UPDATE_CHECK, 0)
-        val currentTime = System.currentTimeMillis()
-        val hoursSinceLastCheck = (currentTime - lastCheck) / (1000 * 60 * 60)
+
+    private fun checkForUpdatesWithRemoteConfig() {
+        val currentVersion = BuildConfig.VERSION_CODE.toLong()
+        val forceUpdateVersion = remoteConfig.getLong(KEY_FORCE_UPDATE_VERSION)
+        val recommendedUpdateVersion = remoteConfig.getLong(KEY_RECOMMENDED_UPDATE_VERSION)
         
-        // Don't check too frequently
-        if (hoursSinceLastCheck < 6 && lastCheck != 0L) {
-            Log.v(TAG, "Update check skipped (last check: ${hoursSinceLastCheck}h ago)")
-            callback(null)
-            return
+        Log.d(TAG, "Version check - Current: $currentVersion, Force: $forceUpdateVersion, Recommended: $recommendedUpdateVersion")
+        
+        when {
+            currentVersion < forceUpdateVersion -> {
+                Log.i(TAG, "Force update required")
+                // This will be handled by Play Store update check
+            }
+            currentVersion < recommendedUpdateVersion -> {
+                Log.i(TAG, "Recommended update available")
+                // Show recommendation if not dismissed
+                val dismissedVersion = prefs.getLong(KEY_DISMISSED_VERSION, 0)
+                if (dismissedVersion < recommendedUpdateVersion) {
+                    showRecommendedUpdateNotification()
+                }
+            }
+            else -> {
+                Log.d(TAG, "App is up to date")
+            }
         }
         
         // Update last check time
-        preferences.edit().putLong(KEY_LAST_UPDATE_CHECK, currentTime).apply()
-        
-        // In production, this would check a remote endpoint or Play Store API
-        // For now, simulate update check
-        checkForUpdatesSimulated(callback)
-    }
-    
-    /**
-     * Simulated update check (replace with real implementation)
-     */
-    private fun checkForUpdatesSimulated(callback: (UpdateInfo?) -> Unit) {
-        // Simulate network delay
-        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-            val currentVersion = getCurrentAppVersion()
-            
-            // Simulate update availability (10% chance for demo)
-            val updateAvailable = (0..9).random() == 0
-            
-            if (updateAvailable) {
-                val updateInfo = UpdateInfo(
-                    versionName = "1.4.0",
-                    versionCode = 140,
-                    updateType = UPDATE_TYPE_MINOR,
-                    releaseDate = dateFormat.format(Date()),
-                    downloadUrl = "https://play.google.com/store/apps/details?id=${context.packageName}",
-                    changelog = """
-                        🎵 New in v1.4.0:
-                        • New audio presets
-                        • Improved UI design
-                        • Better battery optimization
-                        • Bug fixes
-                    """.trimIndent(),
-                    priority = UpdatePriority.NORMAL,
-                    forceUpdate = false
-                )
-                
-                Log.i(TAG, "Update available: ${updateInfo.versionName}")
-                callback(updateInfo)
-            } else {
-                Log.v(TAG, "No updates available")
-                callback(null)
-            }
-        }, 1000)
+        prefs.edit().putLong(KEY_LAST_UPDATE_CHECK, System.currentTimeMillis()).apply()
     }
     
     /**
