@@ -141,6 +141,9 @@ int32_t CafeMode_Process(effect_interface_t** self, audio_buffer_t* in, audio_bu
         return -EINVAL;
     }
     
+    // CRITICAL: Check for real-time constraints
+    auto start_time = std::chrono::high_resolution_clock::now();
+    
     // Bypass if disabled
     if (!ctx->enabled) {
         if (in->raw != out->raw) {
@@ -194,6 +197,15 @@ int32_t CafeMode_Process(effect_interface_t** self, audio_buffer_t* in, audio_bu
         // Convert back to int16 with clipping protection
         out->s16[i * 2] = (int16_t)(std::clamp(finalLeft, -1.0f, 1.0f) * 32767.0f);
         out->s16[i * 2 + 1] = (int16_t)(std::clamp(finalRight, -1.0f, 1.0f) * 32767.0f);
+    }
+    
+    // Verify real-time constraint (<10ms processing time)
+    auto end_time = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
+    
+    // Log if processing exceeds real-time budget
+    if (duration.count() > 10000) { // 10ms = 10,000 microseconds
+        LOGE("Real-time constraint violated: %ld μs (target: <10,000 μs)", duration.count());
     }
     
     return 0;
