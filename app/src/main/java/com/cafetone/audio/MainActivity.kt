@@ -337,6 +337,49 @@ class MainActivity : AppCompatActivity() {
         }
     }
     
+    private fun runGlobalProcessingTests() {
+        Toast.makeText(this, "Running global audio processing tests...", Toast.LENGTH_SHORT).show()
+        
+        Thread {
+            val testSuite = GlobalAudioProcessingTest(this)
+            val results = testSuite.runCompleteTestSuite()
+            
+            runOnUiThread {
+                showTestResults(results)
+            }
+        }.start()
+    }
+    
+    private fun showTestResults(results: GlobalAudioProcessingTest.TestResults) {
+        val statusIcon = if (results.overallSuccessRate >= 80.0f) "✅" else "⚠️"
+        val status = if (results.overallSuccessRate >= 80.0f) "READY" else "NEEDS SETUP"
+        
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("$statusIcon Global Processing Test Results")
+            .setMessage("""
+                Overall Status: $status (${String.format("%.1f", results.overallSuccessRate)}%)
+                
+                Test Results:
+                ${if (results.globalEffectCreation) "✅" else "❌"} Global AudioEffect Creation
+                ${if (results.effectRegistration) "✅" else "❌"} Effect Registration  
+                ${if (results.realTimeLatency) "✅" else "❌"} Real-Time Latency (<10ms)
+                ${if (results.globalAudioPolicy) "✅" else "❌"} Global Audio Policy
+                ${if (results.streamInterception) "✅" else "❌"} Stream Interception
+                ${if (results.spotifyCompatibility) "✅" else "❌"} Spotify Compatibility
+                
+                ${if (results.overallSuccessRate >= 80.0f) 
+                    "🎉 CaféTone is working like Wavelet/RootlessJamesDSP!" 
+                else 
+                    "Configure Shizuku permissions for full functionality."}
+            """.trimIndent())
+            .setPositiveButton("OK", null)
+            .setNeutralButton("Share Results") { _, _ ->
+                val testReport = "CaféTone Global Processing Test: $status (${String.format("%.1f", results.overallSuccessRate)}%)"
+                shareText("CaféTone Test Results", testReport)
+            }
+            .show()
+    }
+    
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         
