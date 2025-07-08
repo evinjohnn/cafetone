@@ -162,9 +162,13 @@ class CafeModeService : Service() {
         Log.d(TAG, "onShizukuStatusChanged called. isPermissionGranted = $granted")
         
         if (granted) {
-            Log.d(TAG, "Shizuku permission granted, setting up audio effects")
+            Log.d(TAG, "Shizuku permission granted, setting up global audio processing")
             shizukuIntegration.grantAudioPermissions()
             setupAudioEffect()
+            
+            // Start global audio processing
+            audioPolicyManager?.registerGlobalAudioProcessor()
+            audioPolicyManager?.startGlobalAudioInterception()
         }
         
         updateStatus()
