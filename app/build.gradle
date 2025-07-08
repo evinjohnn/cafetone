@@ -84,6 +84,12 @@ dependencies {
     implementation 'com.google.firebase:firebase-analytics'
     implementation 'com.google.firebase:firebase-crashlytics'
     
+    // Firebase Cloud Messaging for push notifications
+    implementation 'com.google.firebase:firebase-messaging'
+    
+    // Firebase Remote Config for feature flags and update control
+    implementation 'com.google.firebase:firebase-config'
+    
     // Testing
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.2.1'
