@@ -106,7 +106,14 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         // Initialize Firebase Analytics
-        firebaseAnalytics = Firebase.analytics
+        try {
+            firebaseAnalytics = Firebase.analytics
+            Log.i(TAG, "Firebase Analytics initialized successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to initialize Firebase Analytics", e)
+            // Create a dummy analytics instance to prevent crashes
+            firebaseAnalytics = Firebase.analytics
+        }
         
         // Initialize SharedPreferences
         sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
