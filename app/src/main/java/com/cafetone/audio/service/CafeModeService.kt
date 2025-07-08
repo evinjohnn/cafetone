@@ -46,6 +46,9 @@ class CafeModeService : Service() {
     
     // Sony Café Mode DSP Engine
     private var cafeModeDSP: CafeModeDSP? = null
+    
+    // Global Audio Processing Manager
+    private var audioPolicyManager: AudioPolicyManager? = null
 
     // Advanced Features
     private lateinit var analyticsManager: AnalyticsManager
