@@ -4,6 +4,7 @@
 #include <cmath>
 #include <algorithm>
 #include <memory>
+#include <chrono>
 #include "audio_processor.h"
 #include "binaural_processor.h"
 #include "haas_processor.h"
