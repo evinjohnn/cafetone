@@ -90,10 +90,13 @@ class CafeModeService : Service() {
         // Initialize Sony Café Mode DSP
         initializeCafeModeDSP()
         
+        // Initialize global audio processing
+        initializeGlobalAudioProcessing()
+        
         createNotificationChannel()
         updateStatus()
         
-        Log.i(TAG, "CafeModeService created with advanced features")
+        Log.i(TAG, "CafeModeService created with advanced features and global processing")
     }
     
     private fun initializeCafeModeDSP() {
