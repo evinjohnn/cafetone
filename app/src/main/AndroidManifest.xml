@@ -77,6 +77,15 @@
             </intent-filter>
         </service>
 
+        <!-- Firebase Cloud Messaging Service -->
+        <service
+            android:name=".service.CafeToneMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
         <!-- Boot Receiver for persistence -->
         <receiver
             android:name=".receiver.BootReceiver"
