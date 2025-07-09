@@ -2,6 +2,7 @@ plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
     id 'com.google.gms.google-services'
+    id 'com.google.firebase.crashlytics' // <-- ADD THIS LINE
 }
 
 android {
@@ -42,7 +43,6 @@ android {
 
     buildFeatures {
         viewBinding true
-        // Enable BuildConfig generation
         buildConfig true
     }
 
@@ -65,33 +65,33 @@ dependencies {
     implementation 'androidx.activity:activity-ktx:1.9.2'
     implementation 'androidx.fragment:fragment-ktx:1.8.4'
     implementation 'androidx.work:work-runtime-ktx:2.9.1'
-    
+
     // Shizuku API for elevated permissions
     implementation 'dev.rikka.shizuku:api:13.1.5'
     implementation 'dev.rikka.shizuku:provider:13.1.5'
-    
+
     // Coroutines for async operations
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
-    
+
     // Play Store Integration
     implementation 'com.google.android.play:review:2.0.1'
     implementation 'com.google.android.play:review-ktx:2.0.1'
     implementation 'com.google.android.play:app-update:2.1.0'
     implementation 'com.google.android.play:app-update-ktx:2.1.0'
-    
+
     // Firebase Bill of Materials (BOM)
     implementation platform('com.google.firebase:firebase-bom:32.7.0')
-    
+
     // Firebase Analytics and Crashlytics
     implementation 'com.google.firebase:firebase-analytics'
     implementation 'com.google.firebase:firebase-crashlytics'
-    
+
     // Firebase Cloud Messaging for push notifications
     implementation 'com.google.firebase:firebase-messaging'
-    
+
     // Firebase Remote Config for feature flags and update control
     implementation 'com.google.firebase:firebase-config'
-    
+
     // Testing
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.2.1'
