@@ -4,16 +4,12 @@ import android.annotation.SuppressLint
 import android.app.*
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.media.audiofx.AudioEffect
-import android.media.audiofx.AudioEffect.Descriptor
-import android.media.audiofx.AudioEffect.OnControlStatusChangeListener
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.cafetone.audio.MainActivity
@@ -22,6 +18,7 @@ import com.cafetone.audio.analytics.AnalyticsManager
 import com.cafetone.audio.dsp.CafeModeDSP
 import com.cafetone.audio.engagement.UserEngagementManager
 import com.cafetone.audio.playstore.PlayStoreIntegration
+import com.cafetone.audio.update.UpdateManager // <-- FIX: Added missing import
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.*
@@ -34,6 +31,7 @@ class CafeModeService : Service() {
     private lateinit var analyticsManager: AnalyticsManager
     private lateinit var userEngagementManager: UserEngagementManager
     private lateinit var playStoreIntegration: PlayStoreIntegration
+    private lateinit var updateManager: UpdateManager
 
     // Service state
     private val _serviceState = MutableLiveData<ServiceState>()
@@ -45,7 +43,7 @@ class CafeModeService : Service() {
 
     companion object {
         private const val TAG = "CafeModeService"
-        private val EFFECT_UUID_CAFETONE = UUID.fromString("00000000-0000-0000-0000-000000000000")
+        private val EFFECT_UUID_CAFETONE = UUID.fromString("87654321-4321-8765-4321-fedcba098765")
         private const val NOTIFICATION_ID = 101
         private const val CHANNEL_ID = "CafeModeServiceChannel"
     }
@@ -59,6 +57,7 @@ class CafeModeService : Service() {
         analyticsManager = AnalyticsManager(applicationContext)
         userEngagementManager = UserEngagementManager(applicationContext)
         playStoreIntegration = PlayStoreIntegration(applicationContext)
+        updateManager = UpdateManager(applicationContext) // <-- FIX: Initialize UpdateManager
         cafeModeDSP = CafeModeDSP()
         createNotificationChannel()
         startForeground(NOTIFICATION_ID, createNotification())
@@ -86,12 +85,12 @@ class CafeModeService : Service() {
             isEnabled = true
             _serviceState.postValue(ServiceState.RUNNING)
             analyticsManager.logEvent("audio_processing_started")
-            userEngagementManager.recordSessionStart()
+            userEngagementManager.recordSessionStart() // <-- FIX: This method is now added to its class
             updateStatus()
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start audio processing", e)
             _serviceState.postValue(ServiceState.ERROR)
-            analyticsManager.logError("start_processing_failed", e)
+            analyticsManager.logError("start_processing_failed", e) // <-- FIX: This method is now fixed in its class
         }
     }
 
@@ -104,56 +103,32 @@ class CafeModeService : Service() {
             isEnabled = false
             _serviceState.postValue(ServiceState.STOPPED)
             analyticsManager.logEvent("audio_processing_stopped")
-            userEngagementManager.recordSessionEnd()
+            userEngagementManager.recordSessionEnd() // <-- FIX: This method is now added to its class
             updateStatus()
         } catch (e: Exception) {
             Log.e(TAG, "Error stopping audio processing", e)
-            analyticsManager.logError("stop_processing_failed", e)
+            analyticsManager.logError("stop_processing_failed", e) // <-- FIX: This method is now fixed in its class
         }
     }
 
     @SuppressLint("DiscouragedPrivateApi")
     private fun createAudioEffect(type: UUID, uuid: UUID?): AudioEffect? {
         return try {
-            // Try the most complete constructor first
             val constructor = AudioEffect::class.java.getDeclaredConstructor(
                 UUID::class.java,
                 UUID::class.java,
                 Int::class.javaPrimitiveType,
-                Int::class.javaPrimitiveType,
-                Int::class.javaPrimitiveType,
-                String::class.java
+                Int::class.javaPrimitiveType
             )
-
             constructor.newInstance(
                 type,
                 uuid ?: type,
                 0,  // priority
-                0,  // audio session (0 = GLOBAL)
-                0,  // flags
-                applicationContext.packageName
+                0   // audio session (0 = GLOBAL)
             ) as AudioEffect
         } catch (e: Exception) {
-            Log.e(TAG, "Error creating AudioEffect with full constructor", e)
-            try {
-                // Fallback to simpler constructor
-                val simpleConstructor = AudioEffect::class.java.getDeclaredConstructor(
-                    UUID::class.java,
-                    UUID::class.java,
-                    Int::class.javaPrimitiveType,
-                    Int::class.javaPrimitiveType
-                )
-
-                simpleConstructor.newInstance(
-                    type,
-                    uuid ?: type,
-                    0,  // priority
-                    0   // audio session (0 = GLOBAL)
-                ) as AudioEffect
-            } catch (e2: Exception) {
-                Log.e(TAG, "Fallback AudioEffect creation failed", e2)
-                null
-            }
+            Log.e(TAG, "Error creating AudioEffect", e)
+            null
         }
     }
 
@@ -165,42 +140,21 @@ class CafeModeService : Service() {
                     return
                 }
 
-                // Convert paramId and value to byte arrays
-                val paramBuffer = ByteBuffer.allocate(4).order(ByteOrder.nativeOrder())
-                    .putInt(paramId).array()
-                val valueBuffer = ByteBuffer.allocate(4).order(ByteOrder.nativeOrder())
-                    .putFloat(value).array()
+                val paramBuffer = ByteBuffer.allocate(4).order(ByteOrder.nativeOrder()).putInt(paramId).array()
+                val valueBuffer = ByteBuffer.allocate(4).order(ByteOrder.nativeOrder()).putFloat(value).array()
 
-                // Use reflection to call setParameter
-                val method = AudioEffect::class.java.getMethod(
-                    "setParameter",
-                    Int::class.javaPrimitiveType,
-                    Int::class.javaPrimitiveType,
-                    ByteArray::class.java,
-                    ByteArray::class.java
-                )
-
-                // Try both method signatures
-                try {
-                    // Try with int parameters first
-                    method.invoke(effect, paramId, value.toInt())
-                } catch (e: Exception) {
-                    // Fall back to byte array parameters
-                    method.invoke(effect, paramBuffer, valueBuffer)
-                }
+                val method = AudioEffect::class.java.getMethod("setParameter", ByteArray::class.java, ByteArray::class.java)
+                method.invoke(effect, paramBuffer, valueBuffer)
 
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to set parameter on AudioEffect", e)
             }
         }
 
-        // Update the DSP parameters
-        cafeModeDSP?.let { dsp ->
-            when (paramId) {
-                0 -> dsp.setIntensity(value)
-                1 -> dsp.setSpatialWidth(value)
-                2 -> dsp.setDistance(value)
-            }
+        when (paramId) {
+            CafeModeDSP.PARAM_INTENSITY -> cafeModeDSP.setIntensity(value)
+            CafeModeDSP.PARAM_SPATIAL_WIDTH -> cafeModeDSP.setSpatialWidth(value)
+            CafeModeDSP.PARAM_DISTANCE -> cafeModeDSP.setDistance(value)
         }
     }
 
@@ -228,11 +182,7 @@ class CafeModeService : Service() {
             audioEffect = if (cafeToneDescriptor != null) {
                 createAudioEffect(cafeToneDescriptor.type, cafeToneDescriptor.uuid)
             } else {
-                // Fallback to equalizer
-                createAudioEffect(
-                    AudioEffect.EFFECT_TYPE_EQUALIZER,
-                    AudioEffect.EFFECT_TYPE_EQUALIZER
-                )
+                createAudioEffect(AudioEffect.EFFECT_TYPE_EQUALIZER, AudioEffect.EFFECT_TYPE_EQUALIZER)
             }
 
             audioEffect?.let {
@@ -242,17 +192,14 @@ class CafeModeService : Service() {
             } ?: Log.e(TAG, "Failed to create fallback AudioEffect")
         } catch (e: Exception) {
             Log.e(TAG, "Error setting up fallback audio effect", e)
-            analyticsManager.logError("fallback_effect_setup_failed", e)
+            analyticsManager.logError("fallback_effect_setup_failed", e) // <-- FIX: Fixed call
         }
     }
 
     private fun setAllParams() {
-        // Set all DSP parameters
-        cafeModeDSP?.let { dsp ->
-            setEffectParam(0, dsp.getIntensity())
-            setEffectParam(1, dsp.getSpatialWidth())
-            setEffectParam(2, dsp.getDistance())
-        }
+        setEffectParam(CafeModeDSP.PARAM_INTENSITY, cafeModeDSP.getIntensity())
+        setEffectParam(CafeModeDSP.PARAM_SPATIAL_WIDTH, cafeModeDSP.getSpatialWidth())
+        setEffectParam(CafeModeDSP.PARAM_DISTANCE, cafeModeDSP.getDistance())
     }
 
     private fun createNotificationChannel() {
@@ -264,7 +211,6 @@ class CafeModeService : Service() {
             ).apply {
                 description = "Channel for Cafe Mode audio processing"
             }
-
             val notificationManager = getSystemService(NotificationManager::class.java)
             notificationManager.createNotificationChannel(serviceChannel)
         }
@@ -275,7 +221,6 @@ class CafeModeService : Service() {
             PendingIntent.getActivity(this, 0, notificationIntent,
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         }
-
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Cafe Mode")
             .setContentText("Processing audio...")
@@ -291,12 +236,16 @@ class CafeModeService : Service() {
     }
 
     fun getAnalyticsManager(): AnalyticsManager = analyticsManager
-
     fun getEngagementManager(): UserEngagementManager = userEngagementManager
-
     fun getPlayStoreIntegration(): PlayStoreIntegration = playStoreIntegration
+    fun getUpdateManager(): UpdateManager = updateManager
 
-    fun getUpdateManager(): UpdateManager = UpdateManager(this)
+    // FIX: ADDED GETTER METHODS REQUIRED BY MainActivity
+    fun getIntensity(): Float = cafeModeDSP.getIntensity()
+    fun getSpatialWidth(): Float = cafeModeDSP.getSpatialWidth()
+    fun getDistance(): Float = cafeModeDSP.getDistance()
+    fun getCafeModeDSP(): CafeModeDSP = cafeModeDSP
+
 
     fun toggleCafeMode() {
         if (isEnabled) {
@@ -307,22 +256,21 @@ class CafeModeService : Service() {
     }
 
     fun setIntensity(value: Float) {
-        cafeModeDSP.setIntensity(value)
+        setEffectParam(CafeModeDSP.PARAM_INTENSITY, value)
         updateStatus()
     }
 
     fun setSpatialWidth(value: Float) {
-        cafeModeDSP.setSpatialWidth(value)
+        setEffectParam(CafeModeDSP.PARAM_SPATIAL_WIDTH, value)
         updateStatus()
     }
 
     fun setDistance(value: Float) {
-        cafeModeDSP.setDistance(value)
+        setEffectParam(CafeModeDSP.PARAM_DISTANCE, value)
         updateStatus()
     }
 
     fun forceShizukuCheck() {
-        // Implementation for Shizuku permission check
         val hasPermission = checkShizukuPermission()
         updateStatus(hasPermission)
     }
@@ -342,8 +290,6 @@ class CafeModeService : Service() {
     }
 
     private fun checkShizukuPermission(): Boolean {
-        // Implementation for checking Shizuku permission
-        // Return true if permission is granted, false otherwise
         return false
     }
 

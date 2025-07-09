@@ -1,4 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!--
+    ================================================
+    FIX: ADDED 'primary' and 'on_primary' for launcher icons
+    ================================================
+    -->
+    <color name="primary">#6F4E37</color>
+    <color name="on_primary">#FFFFFF</color>
+
+
     <!-- Material 3 Dynamic Colors - Light Theme -->
     <color name="md_theme_light_primary">#6F4E37</color>
     <color name="md_theme_light_onPrimary">#FFFFFF</color>
@@ -60,18 +70,12 @@
     <color name="md_theme_dark_inverseOnSurface">#313033</color>
     <color name="md_theme_dark_inversePrimary">#6F4E37</color>
 
-    <!-- Café Mode Specific Colors -->
-    <color name="cafe_mode_background">#1E1E1E</color>
-    <color name="cafe_mode_surface">#2D2D2D</color>
-    <color name="cafe_mode_primary">#BB86FC</color>
-    <color name="cafe_mode_primary_variant">#3700B3</color>
-    <color name="cafe_mode_secondary">#03DAC6</color>
-    <color name="cafe_mode_error">#CF6679</color>
-    <color name="cafe_mode_on_primary">#000000</color>
-    <color name="cafe_mode_on_secondary">#000000</color>
-    <color name="cafe_mode_on_background">#E1E1E1</color>
-    <color name="cafe_mode_on_surface">#E1E1E1</color>
-    <color name="cafe_mode_on_error">#000000</color>
+    <!-- CaféTone Specific Colors -->
+    <color name="cafe_brown">#5D4037</color>      <!-- A rich, dark coffee brown -->
+    <color name="cafe_accent">#A1662F</color>     <!-- A warm, saddle brown accent -->
+    <color name="cafe_cream">#F5EFE6</color>      <!-- A light, creamy off-white -->
+    <color name="cafe_warm">#8D6E63</color>       <!-- A warm, muted brown/taupe -->
+    <color name="cafe_gold">#D4AF37</color>       <!-- A subtle gold for highlights -->
 
     <!-- Status Colors -->
     <color name="status_active">#4CAF50</color>
@@ -86,5 +90,6 @@
     <color name="green_500">#4CAF50</color>
     <color name="orange_500">#FF9800</color>
     <color name="gray_500">#9E9E9E</color>
+    <color name="gray_700">#616161</color>
     <color name="notification_color">#2196F3</color>
 </resources>
