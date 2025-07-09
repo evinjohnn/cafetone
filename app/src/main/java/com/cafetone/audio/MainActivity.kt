@@ -307,26 +307,60 @@ class MainActivity : AppCompatActivity() {
     private fun updateDistanceLabel(value: Int) { binding.tvDistanceValue.text = "$value%" }
 
     private fun updateStatusUI(status: AppStatus) {
+        // Animate status changes
+        binding.tvStatus.animate()
+            .alpha(0f)
+            .setDuration(150)
+            .withEndAction {
+                updateStatusContent(status)
+                binding.tvStatus.animate()
+                    .alpha(1f)
+                    .setDuration(150)
+                    .start()
+            }
+            .start()
+        
+        // Update toggle without animation interference
         binding.toggleCafeMode.isChecked = status.isEnabled
+        
+        // Handle refresh button visibility
         binding.btnRefreshStatus.visibility = if (status.isShizukuReady) View.GONE else View.VISIBLE
-
-        if (!status.isShizukuReady) {
-            binding.tvStatus.text = "Shizuku Required"
-            binding.tvStatus.setTextColor(ContextCompat.getColor(this, R.color.orange_500))
-            binding.ivStatusIcon.setImageResource(R.drawable.ic_warning)
-            binding.tvStatusSubtitle.visibility = View.VISIBLE
-            binding.tvStatusSubtitle.text = status.shizukuMessage
-            if (isBound) engagementManager?.showShizukuTutorial(this)
-        } else if (status.isEnabled) {
-            binding.tvStatus.text = "Sony Café Mode Active"
-            binding.tvStatus.setTextColor(ContextCompat.getColor(this, R.color.green_500))
-            binding.ivStatusIcon.setImageResource(R.drawable.ic_cafe_active)
-            binding.tvStatusSubtitle.visibility = View.GONE
-        } else {
-            binding.tvStatus.text = "Café Mode Inactive"
-            binding.tvStatus.setTextColor(ContextCompat.getColor(this, R.color.gray_500))
-            binding.ivStatusIcon.setImageResource(R.drawable.ic_cafe_inactive)
-            binding.tvStatusSubtitle.visibility = View.GONE
+        
+        // Show engagement tutorials based on status
+        if (isBound && !status.isShizukuReady) {
+            engagementManager?.showShizukuTutorial(this)
+        }
+    }
+    
+    private fun updateStatusContent(status: AppStatus) {
+        when {
+            !status.isShizukuReady -> {
+                binding.tvStatus.text = "Setup Required"
+                binding.tvStatus.setTextColor(ContextCompat.getColor(this, R.color.status_warning))
+                binding.ivStatusIcon.setImageResource(R.drawable.ic_warning)
+                binding.ivStatusIcon.imageTintList = ColorStateList.valueOf(ContextCompat.getColor(this, R.color.status_warning))
+                binding.tvStatusSubtitle.visibility = View.VISIBLE
+                binding.tvStatusSubtitle.text = status.shizukuMessage
+                binding.tvStatusSubtitle.setTextColor(ContextCompat.getColor(this, R.color.status_warning))
+            }
+            status.isEnabled -> {
+                binding.tvStatus.text = "Café Mode Active"
+                binding.tvStatus.setTextColor(ContextCompat.getColor(this, R.color.status_success))
+                binding.ivStatusIcon.setImageResource(R.drawable.ic_cafe_active)
+                binding.ivStatusIcon.imageTintList = ColorStateList.valueOf(ContextCompat.getColor(this, R.color.status_success))
+                binding.tvStatusSubtitle.visibility = View.VISIBLE
+                binding.tvStatusSubtitle.text = "Audio processing enabled"
+                binding.tvStatusSubtitle.setTextColor(ContextCompat.getColor(this, R.color.status_success))
+            }
+            else -> {
+                binding.tvStatus.text = "Ready to Use"
+                binding.tvStatus.setTextColor(ContextCompat.getColor(this, R.color.cafe_brown))
+                binding.ivStatusIcon.setImageResource(R.drawable.ic_cafe_inactive)
+                binding.ivStatusIcon.imageTintList = ColorStateList.valueOf(ContextCompat.getColor(this, R.color.cafe_brown))
+                binding.tvStatusSubtitle.visibility = View.VISIBLE
+                binding.tvStatusSubtitle.text = "Tap to enable Café Mode"
+                binding.tvStatusSubtitle.setTextColor(ContextCompat.getColor(this, R.color.cafe_warm))
+            }
         }
     }
 
