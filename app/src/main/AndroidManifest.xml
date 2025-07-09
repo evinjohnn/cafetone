@@ -10,6 +10,9 @@
     <!-- Shizuku API permissions -->
     <uses-permission android:name="moe.shizuku.manager.permission.API_V23" />
     <uses-permission android:name="rikka.shizuku.permission.API_V23" />
+    <!-- Permission required by ShizukuProvider -->
+    <uses-permission android:name="android.permission.INTERACT_ACROSS_USERS_FULL"
+        tools:ignore="ProtectedPermissions" />
 
     <!-- Global audio processing permissions -->
     <uses-permission android:name="android.permission.CAPTURE_AUDIO_OUTPUT" />
@@ -18,7 +21,6 @@
 
     <!-- Service Permissions -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <!-- GUARANTEED FIX: Added missing foreground service type for Android 14+ -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_AUDIO_PROCESSING" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -54,14 +56,13 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:screenOrientation="portrait"
             android:launchMode="singleTop"
+            android:screenOrientation="portrait"
             android:theme="@style/Theme.CaféTone">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-
             <!-- Handle audio routing intents -->
             <intent-filter>
                 <action android:name="android.media.AUDIO_BECOMING_NOISY" />
@@ -74,16 +75,26 @@
             android:enabled="true"
             android:exported="false"
             android:stopWithTask="false"
-            tools:ignore="ForegroundServiceType">
-            <!-- GUARANTEED FIX: Declared all possible foreground service types. This fixes the crash. -->
-            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="This service provides system-wide audio effects and requires foreground access to process audio in the background."/>
+            android:foregroundServiceType="microphone">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="This service provides system-wide audio effects and requires foreground access to process audio in the background." />
             <intent-filter>
                 <action android:name="com.cafetone.audio.TOGGLE" />
             </intent-filter>
         </service>
 
-        <!-- Command User Service (from new code) -->
+        <!-- Privileged Audio Service (from first manifest) -->
+        <service
+            android:name=".privileged.PrivilegedAudioService"
+            android:exported="true"
+            tools:ignore="ExportedService">
+            <intent-filter>
+                <action android:name="com.cafetone.audio.privileged.PrivilegedAudioService" />
+            </intent-filter>
+        </service>
+
+        <!-- Command User Service -->
         <service
             android:name=".service.CommandUserService"
             android:exported="true"
@@ -114,6 +125,15 @@
                 <data android:scheme="package" />
             </intent-filter>
         </receiver>
+
+        <!-- ShizukuProvider for Shizuku integration -->
+        <provider
+            android:name="rikka.shizuku.ShizukuProvider"
+            android:authorities="${applicationId}.shizuku"
+            android:enabled="true"
+            android:exported="true"
+            android:multiprocess="false"
+            android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
 
         <!-- File Provider for sharing and exports -->
         <provider

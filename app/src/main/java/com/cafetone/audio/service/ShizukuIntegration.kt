@@ -3,14 +3,9 @@ package com.cafetone.audio.service
 import android.content.Context
 import android.content.pm.PackageManager
 import android.util.Log
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import rikka.shizuku.Shizuku
-import rikka.shizuku.ShizukuRemoteProcess
-import java.io.ByteArrayOutputStream
 
-class ShizukuIntegration(private val context: Context) {
+class ShizukuIntegration(private val context: Context, private val onPermissionResult: (Boolean) -> Unit) {
 
     companion object {
         private const val TAG = "ShizukuIntegration"
@@ -21,104 +16,62 @@ class ShizukuIntegration(private val context: Context) {
         private set
 
     private var isShizukuAvailable = false
-    private var onStatusChangedCallback: (() -> Unit)? = null
 
     private val binderDeadRecipient = Shizuku.OnBinderDeadListener {
         Log.w(TAG, "Shizuku binder died.")
         isShizukuAvailable = false
         isPermissionGranted = false
-        onStatusChangedCallback?.invoke()
+        onPermissionResult(false)
     }
 
     private val permissionRequestListener = Shizuku.OnRequestPermissionResultListener { requestCode, grantResult ->
         if (requestCode == SHIZUKU_PERMISSION_REQUEST_CODE) {
             isPermissionGranted = (grantResult == PackageManager.PERMISSION_GRANTED)
             Log.i(TAG, "Shizuku permission result: ${if (isPermissionGranted) "GRANTED" else "DENIED"}")
-            if (isPermissionGranted) {
-                grantAudioPermissions()
-            }
-            onStatusChangedCallback?.invoke()
+            onPermissionResult(isPermissionGranted)
         }
     }
 
-    fun initialize(onStatusChanged: () -> Unit) {
-        this.onStatusChangedCallback = onStatusChanged
+    init {
         Shizuku.addBinderDeadListener(binderDeadRecipient)
         Shizuku.addRequestPermissionResultListener(permissionRequestListener)
         checkShizukuAvailability()
     }
 
     fun checkShizukuAvailability() {
-        // GUARANTEED FIX: Wrap Shizuku calls in a try-catch to prevent "binder haven't been received" crash.
         try {
             if (Shizuku.isPreV11() || Shizuku.getVersion() < 11) {
                 isShizukuAvailable = false
                 isPermissionGranted = false
-                onStatusChangedCallback?.invoke()
+                onPermissionResult(false)
                 return
             }
 
             isShizukuAvailable = Shizuku.pingBinder()
             if (isShizukuAvailable) {
                 if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
-                    isPermissionGranted = true
-                    grantAudioPermissions()
+                    if (!isPermissionGranted) {
+                        isPermissionGranted = true
+                        onPermissionResult(true)
+                    }
                 } else {
                     isPermissionGranted = false
                     Shizuku.requestPermission(SHIZUKU_PERMISSION_REQUEST_CODE)
                 }
             } else {
                 isPermissionGranted = false
+                onPermissionResult(false)
             }
         } catch (e: IllegalStateException) {
             Log.e(TAG, "Shizuku binder not ready, will retry: ${e.message}")
             isShizukuAvailable = false
             isPermissionGranted = false
+            onPermissionResult(false)
         } catch (e: Exception) {
             Log.e(TAG, "Error checking Shizuku availability", e)
             isShizukuAvailable = false
             isPermissionGranted = false
-        }
-        onStatusChangedCallback?.invoke()
-    }
-
-    fun grantAudioPermissions() {
-        if (!isPermissionGranted) return
-        CoroutineScope(Dispatchers.IO).launch {
-            val packageName = context.packageName
-            val permissions = listOf(
-                "android.permission.MODIFY_AUDIO_SETTINGS", "android.permission.DUMP",
-                "android.permission.CAPTURE_AUDIO_OUTPUT", "android.permission.MODIFY_AUDIO_ROUTING",
-                "android.permission.BIND_AUDIO_SERVICE"
-            )
-            permissions.forEach { executeShizukuCommand("pm grant $packageName $it") }
-        }
-    }
-
-    private fun executeShizukuCommand(command: String) {
-        try {
-            val method = Shizuku::class.java.getMethod("newProcess", Array<String>::class.java, Array<String>::class.java, String::class.java)
-            val process = method.invoke(null, arrayOf("sh", "-c", command), null, "/") as ShizukuRemoteProcess
-
-            val outputStream = ByteArrayOutputStream()
-            val errorStream = ByteArrayOutputStream()
-
-            process.inputStream.copyTo(outputStream)
-            process.errorStream.copyTo(errorStream)
-
-            val exitCode = process.waitFor()
-
-            Log.i(TAG, """
-                Exec: '$command'
-                Exit Code: $exitCode
-                Output: ${outputStream.toString().trim()}
-                Error: ${errorStream.toString().trim()}
-            """.trimIndent())
-
-        } catch (e: IllegalStateException) {
-            Log.e(TAG, "Shizuku is not running or permission is not granted.", e)
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to execute Shizuku command via reflection: $command", e)
+            onPermissionResult(false)
         }
     }
 

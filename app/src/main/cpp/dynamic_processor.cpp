@@ -26,7 +26,7 @@ void DynamicProcessor::process(const float* input, float* output, int frames) {
 
     for (int i = 0; i < frames; i++) {
         float sample = input[i];
-        // GUARANTEED FIX: Pass the channel index (0 for mono/left)
+        // Pass the channel index (0 for mono/left)
         processMultiBandCompressor(sample, sample, 0);
         sample *= m_makeupGain;
         output[i] = sample;
@@ -47,7 +47,7 @@ void DynamicProcessor::process(const float* leftIn, const float* rightIn,
         float leftSample = leftIn[i];
         float rightSample = rightIn[i];
 
-        // GUARANTEED FIX: Pass the correct channel index for left (0) and right (1)
+        // Pass the correct channel index for left (0) and right (1)
         processMultiBandCompressor(leftSample, leftSample, 0);
         processMultiBandCompressor(rightSample, rightSample, 1);
 
@@ -66,8 +66,8 @@ void DynamicProcessor::process(const float* leftIn, const float* rightIn,
     }
 }
 
-// GUARANTEED FIX: Added the 'channel' parameter back to match the header declaration.
-void DynamicProcessor::processMultiBandCompressor(float input, float& output, int channel) {
+// FIX: Removed unused 'channel' parameter name from definition to silence compiler warning.
+void DynamicProcessor::processMultiBandCompressor(float input, float& output, int /*channel*/) {
     float lowBand = input;
     float midBand = input;
     float highBand = input;
