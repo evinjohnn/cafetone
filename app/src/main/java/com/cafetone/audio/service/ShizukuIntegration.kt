@@ -1,42 +1,69 @@
 package com.cafetone.audio.service
 
+import android.content.ComponentName
 import android.content.Context
+import android.content.ServiceConnection
 import android.content.pm.PackageManager
+import android.os.IBinder
+import android.os.RemoteException
 import android.util.Log
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
+import java.io.InputStream
+import rikka.shizuku.Shizuku
+import rikka.shizuku.ShizukuBinderWrapper
+import rikka.shizuku.server.IShizukuService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import rikka.shizuku.Shizuku
-import java.io.IOException
 
 class ShizukuIntegration(private val context: Context) {
 
     companion object {
         private const val TAG = "ShizukuIntegration"
         private const val SHIZUKU_PERMISSION_REQUEST_CODE = 1000
+        private const val TARGET_EFFECT_CONF_PATH = "/vendor/etc/audio_effects.xml"
     }
 
     var isPermissionGranted = false
         private set
 
     private var isShizukuAvailable = false
+    private var shizukuService: IShizukuService? = null
     private var onStatusChangedCallback: (() -> Unit)? = null
 
-    private val binderDeathRecipient = Shizuku.OnBinderDeadListener {
+    private val shizukuConnection = object : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+            if (service == null) {
+                Log.e(TAG, "Shizuku service connected but binder is null")
+                return
+            }
+            shizukuService = IShizukuService.Stub.asInterface(ShizukuBinderWrapper(service))
+            Log.i(TAG, "Shizuku service connected.")
+            deployAudioEffectConfiguration()
+        }
+
+        override fun onServiceDisconnected(name: ComponentName?) {
+            shizukuService = null
+            Log.w(TAG, "Shizuku service disconnected.")
+        }
+    }
+
+    private val binderDeadRecipient = Shizuku.OnBinderDeadListener {
         Log.w(TAG, "Shizuku binder died.")
         isShizukuAvailable = false
         isPermissionGranted = false
+        shizukuService = null
         onStatusChangedCallback?.invoke()
     }
 
     private val permissionRequestListener = Shizuku.OnRequestPermissionResultListener { requestCode, grantResult ->
         if (requestCode == SHIZUKU_PERMISSION_REQUEST_CODE) {
-            if (grantResult == PackageManager.PERMISSION_GRANTED) {
-                Log.d(TAG, "Shizuku permission result: GRANTED by user.")
-                isPermissionGranted = true
-            } else {
-                Log.e(TAG, "Shizuku permission result: DENIED by user.")
-                isPermissionGranted = false
+            isPermissionGranted = (grantResult == PackageManager.PERMISSION_GRANTED)
+            Log.d(TAG, "Shizuku permission result: ${if (isPermissionGranted) "GRANTED" else "DENIED"}")
+            if (isPermissionGranted) {
+                bindShizukuService()
             }
             onStatusChangedCallback?.invoke()
         }
@@ -44,7 +71,7 @@ class ShizukuIntegration(private val context: Context) {
 
     fun initialize(onStatusChanged: () -> Unit) {
         this.onStatusChangedCallback = onStatusChanged
-        Shizuku.addBinderDeadListener(binderDeathRecipient)
+        Shizuku.addBinderDeadListener(binderDeadRecipient)
         Shizuku.addRequestPermissionResultListener(permissionRequestListener)
         checkShizukuAvailability()
     }
@@ -54,18 +81,18 @@ class ShizukuIntegration(private val context: Context) {
             Log.d(TAG, "Checking Shizuku availability...")
             isShizukuAvailable = Shizuku.pingBinder()
             if (isShizukuAvailable) {
-                Log.d(TAG, "Shizuku binder is active.")
                 if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
                     Log.d(TAG, "Shizuku permission is ALREADY GRANTED.")
                     isPermissionGranted = true
+                    bindShizukuService()
                 } else {
-                    Log.d(TAG, "Shizuku permission NOT granted. Requesting it now.")
                     isPermissionGranted = false
+                    Log.w(TAG, "Shizuku permission NOT granted. User needs to grant it.")
                     Shizuku.requestPermission(SHIZUKU_PERMISSION_REQUEST_CODE)
                 }
             } else {
-                Log.e(TAG, "Shizuku binder is NOT active.")
                 isPermissionGranted = false
+                Log.e(TAG, "Shizuku binder is NOT active.")
             }
         } catch (e: Exception) {
             Log.e(TAG, "Exception while checking Shizuku.", e)
@@ -75,83 +102,101 @@ class ShizukuIntegration(private val context: Context) {
         onStatusChangedCallback?.invoke()
     }
 
-    fun grantAudioPermissions() {
-        if (!isPermissionGranted) return
-        CoroutineScope(Dispatchers.IO).launch {
-            val packageName = context.packageName
-            
-            // Basic permissions first
-            val basicCommands = listOf(
-                arrayOf("pm", "grant", packageName, "android.permission.MODIFY_AUDIO_SETTINGS"),
-                arrayOf("pm", "grant", packageName, "android.permission.DUMP")
-            )
-            
-            // Advanced permissions for global audio processing
-            val advancedCommands = listOf(
-                arrayOf("pm", "grant", packageName, "android.permission.CAPTURE_AUDIO_OUTPUT"),
-                arrayOf("pm", "grant", packageName, "android.permission.MODIFY_AUDIO_ROUTING"),
-                arrayOf("pm", "grant", packageName, "android.permission.BIND_AUDIO_SERVICE")
-            )
-            
-            // Execute basic commands
-            basicCommands.forEach { command ->
-                val result = executeShizukuCommand(command)
-                Log.i(TAG, "${command.joinToString(" ")} result: $result")
+    private fun bindShizukuService() {
+        try {
+            val binderPackageName = Shizuku.getBinderPackageName()
+            if (binderPackageName != null) {
+                val componentName = ComponentName(binderPackageName, "moe.shizuku.api.ShizukuUserService")
+                Shizuku.bindUserService(componentName, shizukuConnection)
+                Log.i(TAG, "Binding to Shizuku User Service...")
+            } else {
+                Log.e(TAG, "Could not get Shizuku binder package name.")
             }
-            
-            // Execute advanced commands for global processing
-            advancedCommands.forEach { command ->
-                val result = executeShizukuCommand(command)
-                Log.i(TAG, "${command.joinToString(" ")} result: $result")
-            }
-            
-            // Enable global audio processing
-            enableGlobalAudioProcessing()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to bind to Shizuku service", e)
         }
     }
-    
-    fun enableGlobalAudioProcessing() {
-        if (!isPermissionGranted) return
-        
-        val packageName = context.packageName
-        val effectUuid = "87654321-4321-8765-4321-fedcba098765"
-        
-        // Audio policy modifications for global processing
-        val audioPolicyCommands = listOf(
-            // Critical permissions for global audio
-            arrayOf("cmd", "audio", "set-global-effect-enabled", "true"),
-            arrayOf("setprop", "persist.vendor.audio.global_effects.enable", "1"),
-            arrayOf("setprop", "ro.audio.global_effects_enable", "true"),
-            arrayOf("setprop", "persist.audio.effect.signature", "cafetone"),
-            
-            // Audio routing control
-            arrayOf("cmd", "audio", "set-default-effect", effectUuid),
-            arrayOf("cmd", "audio", "force-effect-enabled", effectUuid, "true")
-        )
-        
+
+    private fun extractAssetToFile(assetName: String): File? {
+        return try {
+            val inputStream: InputStream = context.assets.open(assetName)
+            val tempFile = File(context.cacheDir, assetName)
+            FileOutputStream(tempFile).use { outputStream ->
+                inputStream.use { it.copyTo(outputStream) }
+            }
+            Log.i(TAG, "Extracted '$assetName' to '${tempFile.absolutePath}'")
+            tempFile
+        } catch (e: IOException) {
+            Log.e(TAG, "Failed to extract asset: $assetName. Make sure it's in the app/src/main/assets/ folder.", e)
+            null
+        }
+    }
+
+    private fun deployAudioEffectConfiguration() {
+        if (!isPermissionGranted || shizukuService == null) {
+            Log.w(TAG, "Cannot deploy audio config, Shizuku not ready.")
+            return
+        }
+        Log.i(TAG, "Deploying audio_effects.xml to system...")
+
         CoroutineScope(Dispatchers.IO).launch {
-            audioPolicyCommands.forEach { command ->
-                val result = executeShizukuCommand(command)
-                Log.i(TAG, "Audio policy command: ${command.joinToString(" ")} result: $result")
+            val effectFile = extractAssetToFile("audio_effects.xml") ?: return@launch
+
+            val commands = listOf(
+                "mount -o remount,rw /",
+                "mount -o remount,rw /vendor",
+                "cp ${effectFile.absolutePath} $TARGET_EFFECT_CONF_PATH",
+                "chmod 644 $TARGET_EFFECT_CONF_PATH",
+                "chown root:root $TARGET_EFFECT_CONF_PATH",
+                "mount -o remount,ro /vendor",
+                "mount -o remount,ro /"
+            )
+            commands.forEach { executeShizukuCommand(it) }
+            grantAudioPermissions()
+        }
+    }
+
+    fun grantAudioPermissions() {
+        if (!isPermissionGranted || shizukuService == null) return
+
+        CoroutineScope(Dispatchers.IO).launch {
+            val packageName = context.packageName
+            val permissions = listOf(
+                "android.permission.MODIFY_AUDIO_SETTINGS",
+                "android.permission.DUMP",
+                "android.permission.CAPTURE_AUDIO_OUTPUT",
+                "android.permission.MODIFY_AUDIO_ROUTING",
+                "android.permission.BIND_AUDIO_SERVICE"
+            )
+            permissions.forEach { permission ->
+                executeShizukuCommand("pm grant $packageName $permission")
             }
         }
     }
 
-    private fun executeShizukuCommand(command: Array<String>): String {
-        if (!isPermissionGranted) return "Error: Shizuku permission not granted."
-        return try {
-            val method = Shizuku::class.java.getDeclaredMethod("newProcess", Array<String>::class.java, Array<String>::class.java, String::class.java)
-            method.isAccessible = true
-            val process = method.invoke(null, command, null, null) as Process
-            process.inputStream.bufferedReader().use { it.readText() }
-        } catch (e: Exception) {
-            "Error: ${e.message}"
+    private fun executeShizukuCommand(command: String) {
+        try {
+            val result = shizukuService?.exec(command, null, null)
+            Log.i(TAG, "Exec: '$command' -> Exit Code: ${result?.exitCode}")
+        } catch (e: RemoteException) {
+            Log.e(TAG, "Failed to execute Shizuku command: $command", e)
         }
     }
 
     fun cleanup() {
-        Shizuku.removeBinderDeadListener(binderDeathRecipient)
+        Shizuku.removeBinderDeadListener(binderDeadRecipient)
         Shizuku.removeRequestPermissionResultListener(permissionRequestListener)
+        if (shizukuService != null) {
+            try {
+                val binderPackageName = Shizuku.getBinderPackageName()
+                if (binderPackageName != null) {
+                    val componentName = ComponentName(binderPackageName, "moe.shizuku.api.ShizukuUserService")
+                    Shizuku.unbindUserService(componentName, shizukuConnection, false)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to unbind Shizuku service", e)
+            }
+        }
     }
 
     fun getStatusMessage(): String = when {

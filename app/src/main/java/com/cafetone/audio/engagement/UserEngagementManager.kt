@@ -1,5 +1,6 @@
 package com.cafetone.audio.engagement
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.util.Log
@@ -23,7 +24,6 @@ class UserEngagementManager(private val context: Context) {
 
     private val preferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
 
-    // FIX: ADDED MISSING METHODS CALLED BY CafeModeService
     fun recordSessionStart() {
         Log.i(TAG, "User session started.")
     }
@@ -33,11 +33,11 @@ class UserEngagementManager(private val context: Context) {
     }
 
 
-    fun showFirstTimeTutorial(onComplete: () -> Unit = {}) {
+    fun showFirstTimeTutorial(activity: Activity, onComplete: () -> Unit = {}) {
         if (preferences.getBoolean(KEY_TUTORIAL_COMPLETED, false)) {
             return
         }
-        val tutorial = TutorialDialog(context) {
+        val tutorial = TutorialDialog(activity) {
             preferences.edit().putBoolean(KEY_TUTORIAL_COMPLETED, true).apply()
             Log.i(TAG, "First-time tutorial completed")
             onComplete()
@@ -45,11 +45,11 @@ class UserEngagementManager(private val context: Context) {
         tutorial.show()
     }
 
-    fun showShizukuTutorial(onComplete: () -> Unit = {}) {
+    fun showShizukuTutorial(activity: Activity, onComplete: () -> Unit = {}) {
         if (preferences.getBoolean(KEY_SHIZUKU_TUTORIAL_SHOWN, false)) {
             return
         }
-        AlertDialog.Builder(context)
+        AlertDialog.Builder(activity)
             .setTitle("Shizuku Setup Required")
             .setMessage("""
                 CaféTone needs Shizuku for system-wide audio processing.
@@ -73,23 +73,23 @@ class UserEngagementManager(private val context: Context) {
             .show()
     }
 
-    fun trackCafeModeUsage(): Boolean {
+    fun trackCafeModeUsage(activity: Activity): Boolean {
         val uses = preferences.getInt(KEY_CAFE_MODE_USES, 0) + 1
         preferences.edit().putInt(KEY_CAFE_MODE_USES, uses).apply()
         Log.v(TAG, "Café mode used $uses times")
         return when {
             uses == 5 && !preferences.getBoolean(KEY_MILESTONE_5_USES, false) -> {
-                showMilestone("Café Enthusiast!", "You've used café mode 5 times! 🎵")
+                showMilestone(activity, "Café Enthusiast!", "You've used café mode 5 times! 🎵")
                 preferences.edit().putBoolean(KEY_MILESTONE_5_USES, true).apply()
                 true
             }
             uses == 25 && !preferences.getBoolean(KEY_MILESTONE_25_USES, false) -> {
-                showMilestone("Café Regular!", "25 café sessions completed! ☕")
+                showMilestone(activity, "Café Regular!", "25 café sessions completed! ☕")
                 preferences.edit().putBoolean(KEY_MILESTONE_25_USES, true).apply()
                 true
             }
             uses == 100 && !preferences.getBoolean(KEY_MILESTONE_100_USES, false) -> {
-                showMilestone("Café Master!", "100 café sessions! You're a true audiophile! 🎧")
+                showMilestone(activity, "Café Master!", "100 café sessions! You're a true audiophile! 🎧")
                 preferences.edit().putBoolean(KEY_MILESTONE_100_USES, true).apply()
                 true
             }
@@ -97,8 +97,8 @@ class UserEngagementManager(private val context: Context) {
         }
     }
 
-    private fun showMilestone(title: String, message: String) {
-        AlertDialog.Builder(context)
+    private fun showMilestone(activity: Activity, title: String, message: String) {
+        AlertDialog.Builder(activity)
             .setTitle(title)
             .setMessage(message)
             .setPositiveButton("Awesome!") { _, _ -> }
@@ -109,21 +109,21 @@ class UserEngagementManager(private val context: Context) {
         Log.i(TAG, "Milestone shown: $title")
     }
 
-    fun requestFeedbackIfAppropriate(): Boolean {
+    fun requestFeedbackIfAppropriate(activity: Activity): Boolean {
         val uses = preferences.getInt(KEY_CAFE_MODE_USES, 0)
         val lastRequest = preferences.getLong(KEY_LAST_FEEDBACK_REQUEST, 0)
         val feedbackRequested = preferences.getBoolean(KEY_FEEDBACK_REQUESTED, false)
         val daysSinceLastRequest = (System.currentTimeMillis() - lastRequest) / (1000 * 60 * 60 * 24)
         val shouldRequest = uses >= 10 && (!feedbackRequested || daysSinceLastRequest > 60)
         if (shouldRequest) {
-            showFeedbackRequest()
+            showFeedbackRequest(activity)
             return true
         }
         return false
     }
 
-    private fun showFeedbackRequest() {
-        AlertDialog.Builder(context)
+    private fun showFeedbackRequest(activity: Activity) {
+        AlertDialog.Builder(activity)
             .setTitle("Help Us Improve CaféTone")
             .setMessage("How's your café mode experience? Your feedback helps us make CaféTone even better!")
             .setPositiveButton("Send Feedback") { _, _ ->
