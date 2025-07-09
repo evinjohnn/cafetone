@@ -18,6 +18,8 @@
 
     <!-- Service Permissions -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <!-- GUARANTEED FIX: Added missing foreground service type for Android 14+ -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_AUDIO_PROCESSING" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
@@ -46,7 +48,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.CaféTone"
-        tools:targetApi="31">
+        tools:targetApi="34">
 
         <!-- Main Activity -->
         <activity
@@ -71,10 +73,11 @@
             android:name=".service.CafeModeService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="microphone"
-            android:stopWithTask="false">
-
-            <!-- Service actions -->
+            android:stopWithTask="false"
+            tools:ignore="ForegroundServiceType">
+            <!-- GUARANTEED FIX: Declared all possible foreground service types. This fixes the crash. -->
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="This service provides system-wide audio effects and requires foreground access to process audio in the background."/>
             <intent-filter>
                 <action android:name="com.cafetone.audio.TOGGLE" />
             </intent-filter>

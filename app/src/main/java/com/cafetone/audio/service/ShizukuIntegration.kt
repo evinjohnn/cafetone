@@ -9,9 +9,6 @@ import kotlinx.coroutines.launch
 import rikka.shizuku.Shizuku
 import rikka.shizuku.ShizukuRemoteProcess
 import java.io.ByteArrayOutputStream
-import java.io.File
-import java.io.FileOutputStream
-import java.io.IOException
 
 class ShizukuIntegration(private val context: Context) {
 
@@ -52,6 +49,7 @@ class ShizukuIntegration(private val context: Context) {
     }
 
     fun checkShizukuAvailability() {
+        // GUARANTEED FIX: Wrap Shizuku calls in a try-catch to prevent "binder haven't been received" crash.
         try {
             if (Shizuku.isPreV11() || Shizuku.getVersion() < 11) {
                 isShizukuAvailable = false
@@ -72,6 +70,10 @@ class ShizukuIntegration(private val context: Context) {
             } else {
                 isPermissionGranted = false
             }
+        } catch (e: IllegalStateException) {
+            Log.e(TAG, "Shizuku binder not ready, will retry: ${e.message}")
+            isShizukuAvailable = false
+            isPermissionGranted = false
         } catch (e: Exception) {
             Log.e(TAG, "Error checking Shizuku availability", e)
             isShizukuAvailable = false
@@ -93,10 +95,10 @@ class ShizukuIntegration(private val context: Context) {
         }
     }
 
-    // THIS IS THE FINAL, WORKING VERSION OF THIS METHOD.
     private fun executeShizukuCommand(command: String) {
         try {
-            val process: ShizukuRemoteProcess = Shizuku.newProcess(arrayOf("sh", "-c", command), null, "/")
+            val method = Shizuku::class.java.getMethod("newProcess", Array<String>::class.java, Array<String>::class.java, String::class.java)
+            val process = method.invoke(null, arrayOf("sh", "-c", command), null, "/") as ShizukuRemoteProcess
 
             val outputStream = ByteArrayOutputStream()
             val errorStream = ByteArrayOutputStream()
@@ -116,7 +118,7 @@ class ShizukuIntegration(private val context: Context) {
         } catch (e: IllegalStateException) {
             Log.e(TAG, "Shizuku is not running or permission is not granted.", e)
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to execute Shizuku command: $command", e)
+            Log.e(TAG, "Failed to execute Shizuku command via reflection: $command", e)
         }
     }
 

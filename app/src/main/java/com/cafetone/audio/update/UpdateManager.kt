@@ -3,6 +3,7 @@ package com.cafetone.audio.update
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.util.Log
 import androidx.appcompat.app.AlertDialog
@@ -15,7 +16,6 @@ import com.google.firebase.remoteconfig.FirebaseRemoteConfig
 import com.google.firebase.remoteconfig.ktx.remoteConfig
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.remoteconfig.ktx.remoteConfigSettings
-// Removed BuildConfig import as we'll use package manager instead
 import com.cafetone.audio.R
 
 /**
@@ -48,21 +48,21 @@ class UpdateManager(private val context: Context) {
     private val remoteConfig: FirebaseRemoteConfig = Firebase.remoteConfig
     private val prefs = context.getSharedPreferences(PREFS_UPDATE, Context.MODE_PRIVATE)
 
-    /**
-     * Get the current app version code from package manager
-     */
-    private fun getAppVersionCode(): Int {
+    // GUARANTEED FIX: Replaced BuildConfig with a more robust PackageManager call.
+    @Suppress("DEPRECATION")
+    private fun getAppVersionCode(): Long {
         return try {
-            context.packageManager.getPackageInfo(context.packageName, 0).versionCode
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                context.packageManager.getPackageInfo(context.packageName, PackageManager.PackageInfoFlags.of(0)).longVersionCode
+            } else {
+                context.packageManager.getPackageInfo(context.packageName, 0).versionCode.toLong()
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Error getting version code", e)
-            1 // Fallback version code
+            1L // Fallback version code
         }
     }
 
-    /**
-     * Get the current app version name from package manager
-     */
     private fun getAppVersionName(): String {
         return try {
             context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "1.0"
@@ -136,7 +136,7 @@ class UpdateManager(private val context: Context) {
 
                     // Check if immediate update is required
                     val forceUpdateVersion = remoteConfig.getLong(KEY_FORCE_UPDATE_VERSION)
-                    val currentVersion = getAppVersionCode().toLong()
+                    val currentVersion = getAppVersionCode()
 
                     if (currentVersion < forceUpdateVersion) {
                         // Force immediate update
@@ -155,7 +155,7 @@ class UpdateManager(private val context: Context) {
     }
 
     private fun checkForUpdatesWithRemoteConfig() {
-        val currentVersion = getAppVersionCode().toLong()
+        val currentVersion = getAppVersionCode()
         val forceUpdateVersion = remoteConfig.getLong(KEY_FORCE_UPDATE_VERSION)
         val recommendedUpdateVersion = remoteConfig.getLong(KEY_RECOMMENDED_UPDATE_VERSION)
 
@@ -320,7 +320,7 @@ class UpdateManager(private val context: Context) {
      * Get current update status
      */
     fun getUpdateStatus(): String {
-        val currentVersion = getAppVersionCode().toLong()
+        val currentVersion = getAppVersionCode()
         val forceUpdateVersion = remoteConfig.getLong(KEY_FORCE_UPDATE_VERSION)
         val recommendedUpdateVersion = remoteConfig.getLong(KEY_RECOMMENDED_UPDATE_VERSION)
         val lastCheck = prefs.getLong(KEY_LAST_UPDATE_CHECK, 0)

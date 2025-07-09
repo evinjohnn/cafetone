@@ -31,7 +31,7 @@ class GlobalAudioProcessingTest(private val context: Context) {
         }
     }
 
-    // FINAL, DEFINITIVE FIX: Use Java Reflection to bypass the constructor visibility check.
+    // GUARANTEED FIX: Use Java Reflection to bypass the constructor visibility check.
     // This is how the main service code works, so the test must do the same.
     @SuppressLint("DiscouragedPrivateApi")
     private fun createTestEffect(descriptor: AudioEffect.Descriptor): AudioEffect? {
@@ -49,7 +49,7 @@ class GlobalAudioProcessingTest(private val context: Context) {
                 descriptor.uuid,
                 0,  // priority
                 0   // audioSession 0 = GLOBAL
-            ) as AudioEffect
+            )
         } catch (e: Exception) {
             Log.e(TAG, "Failed to create AudioEffect via reflection", e)
             null

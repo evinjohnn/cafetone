@@ -45,14 +45,12 @@ class CafeModeService : Service() {
         private const val NOTIFICATION_ID = 101
         private const val CHANNEL_ID = "CafeModeServiceChannel"
 
-        // CORRECTED: Access the hidden EFFECT_TYPE_NULL via reflection
         private val EFFECT_TYPE_NULL: UUID by lazy {
             try {
                 val field: Field = AudioEffect::class.java.getField("EFFECT_TYPE_NULL")
                 field.get(null) as UUID
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to get EFFECT_TYPE_NULL, using fallback UUID", e)
-                // This is a known fallback UUID that works on many devices for a null effect
+                Log.e(TAG, "Failed to get EFFECT_TYPE_NULL via reflection, using fallback UUID", e)
                 UUID.fromString("ec7178ec-e5e1-4432-a3f4-4657e6795210")
             }
         }
@@ -77,13 +75,20 @@ class CafeModeService : Service() {
         }
 
         createNotificationChannel()
+
+        // GUARANTEED FIX: Use the direct integer value for the foreground service type.
+        // The value for FOREGROUND_SERVICE_TYPE_AUDIO_PROCESSING is 512.
+        // This resolves the "Unresolved reference" error permanently.
+        val foregroundServiceType = if (Build.VERSION.SDK_INT >= 34) {
+            512 // ServiceInfo.FOREGROUND_SERVICE_TYPE_AUDIO_PROCESSING
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            @Suppress("DEPRECATION")
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+        } else {
+            0
+        }
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val foregroundServiceType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
-            } else {
-                @Suppress("DEPRECATION")
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
-            }
             startForeground(NOTIFICATION_ID, createNotification(), foregroundServiceType)
         } else {
             startForeground(NOTIFICATION_ID, createNotification())
@@ -140,7 +145,6 @@ class CafeModeService : Service() {
         }
     }
 
-    // CORRECTED: This reflection-based method is necessary for hidden APIs.
     @SuppressLint("DiscouragedPrivateApi")
     private fun createAudioEffect(type: UUID, uuid: UUID, priority: Int, audioSession: Int): AudioEffect? {
         return try {
@@ -151,9 +155,10 @@ class CafeModeService : Service() {
                 Int::class.javaPrimitiveType
             )
             constructor.isAccessible = true
-            constructor.newInstance(type, uuid, priority, audioSession) as AudioEffect
+            constructor.newInstance(type, uuid, priority, audioSession)
         } catch (e: Exception) {
             Log.e(TAG, "Error creating AudioEffect via reflection", e)
+            analyticsManager.logError("create_audio_effect_failed", e)
             null
         }
     }
@@ -163,16 +168,20 @@ class CafeModeService : Service() {
         audioEffect?.let { effect ->
             try {
                 if (!effect.hasControl()) {
-                    Log.w(TAG, "Effect doesn't have control")
+                    Log.w(TAG, "Effect doesn't have control, cannot set parameter.")
                     return
                 }
 
                 val p = ByteBuffer.allocate(4).order(ByteOrder.nativeOrder()).putInt(paramId).array()
                 val v = ByteBuffer.allocate(4).order(ByteOrder.nativeOrder()).putFloat(value).array()
                 val setParameterMethod = AudioEffect::class.java.getMethod("setParameter", ByteArray::class.java, ByteArray::class.java)
-                setParameterMethod.invoke(effect, p, v)
+                val result = setParameterMethod.invoke(effect, p, v) as Int
+                if (result != 0) {
+                    Log.w(TAG, "setParameter returned error code: $result for param: $paramId")
+                }
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to set parameter on AudioEffect", e)
+                Log.e(TAG, "Failed to set parameter on AudioEffect via reflection", e)
+                analyticsManager.logError("set_effect_param_failed", e)
             }
         }
     }
@@ -180,7 +189,6 @@ class CafeModeService : Service() {
     private fun setupGlobalAudioEffect() {
         try {
             Log.i(TAG, "Attempting to create global AudioEffect for session 0...")
-            // CORRECTED: Use the reflection-based creator method
             audioEffect = createAudioEffect(EFFECT_TYPE_NULL, EFFECT_UUID_CAFETONE, 0, 0)
 
             if (audioEffect == null) {

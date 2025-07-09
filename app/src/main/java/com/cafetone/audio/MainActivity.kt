@@ -330,7 +330,6 @@ class MainActivity : AppCompatActivity() {
         return if (achievements.isEmpty()) "None yet" else achievements.joinToString(", ")
     }
 
-    // GUARANTEED FIX: Corrected this function which I previously broke.
     private fun runDiagnosticTest() {
         Toast.makeText(this, "Running diagnostic tests...", Toast.LENGTH_SHORT).show()
         // Use CoroutineScope to run the test off the main thread
