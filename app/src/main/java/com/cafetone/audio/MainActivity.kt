@@ -283,6 +283,12 @@ class MainActivity : AppCompatActivity() {
             firebaseAnalytics.logEvent("settings_clicked", null)
             analyticsManager?.logEvent(AnalyticsManager.EVENT_SETTINGS_OPENED)
         }
+        
+        // Add diagnostic button functionality
+        binding.btnRefreshStatus.setOnLongClickListener {
+            runDiagnosticTest()
+            true
+        }
     }
 
     private fun updateSliderUI() {
