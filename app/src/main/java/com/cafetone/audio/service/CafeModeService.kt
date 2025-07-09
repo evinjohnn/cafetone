@@ -152,14 +152,38 @@ class CafeModeService : Service() {
 
     private fun setupGlobalAudioEffect() {
         try {
+            // Try to create AudioEffect for global session (0)
+            Log.i(TAG, "Attempting to create global AudioEffect...")
+            
+            // First try with global session (0)
             audioEffect = createAudioEffect(EFFECT_UUID_CAFETONE, EFFECT_UUID_CAFETONE)
-            audioEffect?.let {
-                it.enabled = true
+            
+            if (audioEffect != null) {
+                audioEffect?.enabled = true
                 setAllParams()
-                Log.i(TAG, "Global AudioEffect enabled successfully for session 0.")
-            } ?: throw RuntimeException("AudioEffect creation returned null.")
+                Log.i(TAG, "Global AudioEffect enabled successfully for all audio sessions.")
+            } else {
+                Log.e(TAG, "Failed to create global AudioEffect. Trying fallback approaches...")
+                
+                // Fallback 1: Try with session -1 (all sessions)
+                audioEffect = try {
+                    AudioEffect(EFFECT_UUID_CAFETONE, AudioEffect.EFFECT_TYPE_NULL, 0, -1)
+                } catch (e: Exception) {
+                    Log.w(TAG, "Fallback approach 1 failed: ${e.message}")
+                    null
+                }
+                
+                if (audioEffect != null) {
+                    audioEffect?.enabled = true
+                    setAllParams()
+                    Log.i(TAG, "AudioEffect enabled with fallback approach (session -1).")
+                } else {
+                    Log.e(TAG, "All AudioEffect creation attempts failed.")
+                    throw RuntimeException("AudioEffect creation failed for all approaches")
+                }
+            }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to create global AudioEffect. Is audio_effects.xml deployed correctly?", e)
+            Log.e(TAG, "Failed to setup global AudioEffect", e)
             audioEffect = null
         }
     }
