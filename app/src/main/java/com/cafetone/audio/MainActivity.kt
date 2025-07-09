@@ -293,18 +293,86 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateSliderUI() {
         cafeModeService?.let {
-            binding.sliderIntensity.value = it.getIntensity() * 100
-            binding.sliderSpatialWidth.value = it.getSpatialWidth() * 100
-            binding.sliderDistance.value = it.getDistance() * 100
-            updateIntensityLabel((it.getIntensity() * 100).toInt())
-            updateSpatialWidthLabel((it.getSpatialWidth() * 100).toInt())
-            updateDistanceLabel((it.getDistance() * 100).toInt())
+            // Animate slider value changes
+            val intensity = it.getIntensity() * 100
+            val spatialWidth = it.getSpatialWidth() * 100
+            val distance = it.getDistance() * 100
+            
+            // Update sliders with smooth animation
+            binding.sliderIntensity.animate()
+                .setDuration(200)
+                .withEndAction {
+                    binding.sliderIntensity.value = intensity
+                    updateIntensityLabel(intensity.toInt())
+                }
+                .start()
+                
+            binding.sliderSpatialWidth.animate()
+                .setDuration(200)
+                .withEndAction {
+                    binding.sliderSpatialWidth.value = spatialWidth
+                    updateSpatialWidthLabel(spatialWidth.toInt())
+                }
+                .start()
+                
+            binding.sliderDistance.animate()
+                .setDuration(200)
+                .withEndAction {
+                    binding.sliderDistance.value = distance
+                    updateDistanceLabel(distance.toInt())
+                }
+                .start()
         }
     }
 
-    private fun updateIntensityLabel(value: Int) { binding.tvIntensityValue.text = "$value%" }
-    private fun updateSpatialWidthLabel(value: Int) { binding.tvSpatialWidthValue.text = "$value%" }
-    private fun updateDistanceLabel(value: Int) { binding.tvDistanceValue.text = "$value%" }
+    private fun updateIntensityLabel(value: Int) { 
+        binding.tvIntensityValue.text = "$value%"
+        // Add subtle animation to value changes
+        binding.tvIntensityValue.animate()
+            .scaleX(1.1f)
+            .scaleY(1.1f)
+            .setDuration(100)
+            .withEndAction {
+                binding.tvIntensityValue.animate()
+                    .scaleX(1f)
+                    .scaleY(1f)
+                    .setDuration(100)
+                    .start()
+            }
+            .start()
+    }
+    
+    private fun updateSpatialWidthLabel(value: Int) { 
+        binding.tvSpatialWidthValue.text = "$value%"
+        binding.tvSpatialWidthValue.animate()
+            .scaleX(1.1f)
+            .scaleY(1.1f)
+            .setDuration(100)
+            .withEndAction {
+                binding.tvSpatialWidthValue.animate()
+                    .scaleX(1f)
+                    .scaleY(1f)
+                    .setDuration(100)
+                    .start()
+            }
+            .start()
+    }
+    
+    private fun updateDistanceLabel(value: Int) { 
+        binding.tvDistanceValue.text = "$value%"
+        binding.tvDistanceValue.animate()
+            .scaleX(1.1f)
+            .scaleY(1.1f)
+            .setDuration(100)
+            .withEndAction {
+                binding.tvDistanceValue.animate()
+                    .scaleX(1f)
+                    .scaleY(1f)
+                    .setDuration(100)
+                    .start()
+            }
+            .start()
+    }
 
     private fun updateStatusUI(status: AppStatus) {
         // Animate status changes
