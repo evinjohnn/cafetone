@@ -29,6 +29,7 @@ import com.cafetone.audio.playstore.PlayStoreIntegration
 import com.cafetone.audio.service.AppStatus
 import com.cafetone.audio.service.CafeModeService
 import com.cafetone.audio.test.GlobalAudioProcessingTest
+import com.cafetone.audio.test.CafeToneDiagnostic
 import com.cafetone.audio.update.UpdateManager
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.analytics.ktx.analytics
