@@ -1,7 +1,7 @@
 package com.cafetone.audio.privileged
 
 import android.annotation.SuppressLint
-import android.app.Service // CRITICAL FIX: Import the standard Android Service
+import android.app.Service
 import android.content.Intent
 import android.media.audiofx.AudioEffect
 import android.os.IBinder
@@ -11,8 +11,6 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.UUID
 
-// CRITICAL FIX: The service must extend the standard android.app.Service.
-// Shizuku will start this standard service inside its own privileged process.
 class PrivilegedAudioService : Service() {
 
     companion object {
@@ -50,6 +48,10 @@ class PrivilegedAudioService : Service() {
         override fun isEnabled(): Boolean {
             return audioEffect?.enabled ?: false
         }
+
+        override fun destroyService() {
+            this@PrivilegedAudioService.destroyService()
+        }
     }
 
     override fun onBind(intent: Intent?): IBinder {
@@ -69,11 +71,7 @@ class PrivilegedAudioService : Service() {
         try {
             Log.i(TAG, "Attempting to create global AudioEffect (session 0) from privileged process...")
             audioEffect = createAudioEffect(EFFECT_TYPE_NULL, EFFECT_UUID_CAFETONE, 0, 0)
-            if (audioEffect != null) {
-                Log.i(TAG, "Global AudioEffect created successfully.")
-            } else {
-                Log.e(TAG, "Failed to create AudioEffect, it's null.")
-            }
+            Log.i(TAG, "Global AudioEffect created successfully: ${audioEffect != null}")
         } catch (e: Throwable) {
             Log.e(TAG, "Exception creating AudioEffect", e)
         }
@@ -103,17 +101,10 @@ class PrivilegedAudioService : Service() {
     private fun setParameter(paramId: Int, value: Float) {
         audioEffect?.let { effect ->
             try {
-                if (!effect.hasControl()) {
-                    Log.w(TAG, "Effect doesn't have control, cannot set parameter.")
-                    return@let
-                }
                 val p = ByteBuffer.allocate(4).order(ByteOrder.nativeOrder()).putInt(paramId).array()
                 val v = ByteBuffer.allocate(4).order(ByteOrder.nativeOrder()).putFloat(value).array()
                 val setParameterMethod = AudioEffect::class.java.getMethod("setParameter", ByteArray::class.java, ByteArray::class.java)
-                val result = setParameterMethod.invoke(effect, p, v) as Int
-                if (result != 0) {
-                    Log.w(TAG, "setParameter returned error code: $result for param: $paramId")
-                }
+                setParameterMethod.invoke(effect, p, v)
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to set parameter on AudioEffect via reflection", e)
             }
@@ -134,11 +125,16 @@ class PrivilegedAudioService : Service() {
         }
     }
 
+    fun destroyService() {
+        Log.i(TAG, "destroyService called. Releasing resources and exiting process.")
+        release()
+        stopSelf()
+        System.exit(0)
+    }
+
     override fun onDestroy() {
-        Log.i(TAG, "PrivilegedAudioService is being destroyed.")
+        Log.i(TAG, "PrivilegedAudioService is being destroyed by Android OS.")
         release()
         super.onDestroy()
-        // The process will be killed by Shizuku, but we can request an exit.
-        System.exit(0)
     }
 }

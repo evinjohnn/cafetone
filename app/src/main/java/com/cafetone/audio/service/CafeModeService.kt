@@ -117,7 +117,9 @@ class CafeModeService : Service() {
                 .tag(PRIVILEGED_SERVICE_TAG)
                 .daemon(false)
 
-            Shizuku.bindUserService(serviceArgs, privilegedServiceConnection)
+            // CRITICAL FIX: Call the 3-argument version of the method that the compiler is expecting.
+            Shizuku.bindUserService(serviceArgs, false, privilegedServiceConnection)
+
             Log.i(TAG, "Attempting to bind to PrivilegedAudioService...")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to bind privileged service", e)
@@ -127,6 +129,7 @@ class CafeModeService : Service() {
     private fun unbindPrivilegedService() {
         if (isPrivilegedServiceBound) {
             try {
+                privilegedService?.destroyService()
                 Shizuku.unbindUserService(privilegedServiceConnection, true)
             } catch (e: Exception) {
                 Log.e(TAG, "Error unbinding privileged service", e)
