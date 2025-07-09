@@ -40,6 +40,17 @@ class CafeModeDSP {
     private var isInitialized = false
     private var effectHandle: Long = 0
     
+    // Initialize DSP with default parameters
+    init {
+        val result = init()
+        if (result == 0) {
+            // Set default Sony Café Mode parameters
+            setIntensity(0.7f)
+            setSpatialWidth(0.6f)
+            setDistance(0.8f)
+        }
+    }
+    
     /**
      * Initialize Sony Café Mode DSP engine
      * @return 0 on success, negative error code on failure
