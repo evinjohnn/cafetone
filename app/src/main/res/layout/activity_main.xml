@@ -8,121 +8,103 @@
     android:background="@color/md_theme_light_background"
     tools:context=".MainActivity">
 
-    <androidx.constraintlayout.widget.ConstraintLayout
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="24dp">
+        android:orientation="vertical"
+        android:paddingHorizontal="20dp"
+        android:paddingTop="24dp"
+        android:paddingBottom="32dp">
 
-        <!-- Simple Clean Header -->
-        <LinearLayout
-            android:id="@+id/headerSection"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center"
-            android:layout_marginBottom="32dp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent">
-
-            <ImageView
-                android:id="@+id/ivAppIcon"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:layout_marginEnd="16dp"
-                android:src="@drawable/ic_cafe_mode"
-                app:tint="@color/cafe_accent" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="CaféTone"
-                android:textAppearance="@style/TextAppearance.Material3.HeadlineLarge"
-                android:textColor="@color/cafe_brown"
-                android:fontFamily="@font/cafe_display" />
-
-        </LinearLayout>
-
-        <!-- Master Toggle Card -->
+        <!-- Modern Header with Gradient Background -->
         <com.google.android.material.card.MaterialCardView
-            android:id="@+id/toggleCard"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
+            android:layout_marginBottom="28dp"
+            app:cardBackgroundColor="@color/cafe_accent"
+            app:cardCornerRadius="28dp"
+            app:cardElevation="12dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:padding="28dp">
+
+                <!-- App Icon with Glow Effect -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="72dp"
+                    android:layout_height="72dp"
+                    android:layout_marginEnd="20dp"
+                    app:cardBackgroundColor="@color/white"
+                    app:cardCornerRadius="20dp"
+                    app:cardElevation="8dp">
+
+                    <ImageView
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_cafe_mode"
+                        app:tint="@color/cafe_accent" />
+
+                </com.google.android.material.card.MaterialCardView>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="CaféTone"
+                        android:textColor="@color/white"
+                        android:textSize="32sp"
+                        android:textStyle="bold"
+                        android:letterSpacing="0.02"
+                        android:fontFamily="@font/cafe_display" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="Sony XM6 Listening Mode"
+                        android:textColor="@color/white"
+                        android:textSize="14sp"
+                        android:alpha="0.85" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Status Card with Real-time Updates -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="28dp"
             app:cardBackgroundColor="@color/md_theme_light_surface"
             app:cardCornerRadius="24dp"
             app:cardElevation="8dp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/headerSection"
-            app:strokeColor="@color/cafe_accent"
+            app:strokeColor="@color/cafe_cream"
             app:strokeWidth="2dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="32dp">
+                android:padding="28dp">
 
-                <!-- Toggle Section -->
+                <!-- Status Header -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
                     android:gravity="center_vertical"
-                    android:layout_marginBottom="16dp">
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Sony Café Mode"
-                            android:textAppearance="@style/TextAppearance.Material3.HeadlineMedium"
-                            android:textColor="@color/cafe_brown"
-                            android:fontFamily="@font/cafe_display" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
-                            android:text="Transform your audio experience"
-                            android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
-                            android:textColor="@color/cafe_warm" />
-
-                    </LinearLayout>
-
-                    <com.google.android.material.materialswitch.MaterialSwitch
-                        android:id="@+id/toggleCafeMode"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:scaleX="1.2"
-                        android:scaleY="1.2"
-                        app:thumbTint="@color/cafe_accent"
-                        app:trackTint="@color/cafe_cream" />
-
-                </LinearLayout>
-
-                <!-- Status Section -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:background="@drawable/status_background"
-                    android:padding="16dp">
-
-                    <ImageView
-                        android:id="@+id/ivStatusIcon"
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:layout_marginEnd="12dp"
-                        android:src="@drawable/ic_cafe_inactive"
-                        app:tint="@color/gray_500" />
+                    android:layout_marginBottom="20dp">
 
                     <LinearLayout
                         android:layout_width="0dp"
@@ -134,31 +116,92 @@
                             android:id="@+id/tvStatus"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Café Mode Inactive"
-                            android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
-                            android:textColor="@color/gray_500" />
+                            android:text="Audio Engine Status"
+                            android:textColor="@color/cafe_brown"
+                            android:textSize="20sp"
+                            android:textStyle="bold" />
 
                         <TextView
                             android:id="@+id/tvStatusSubtitle"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
-                            android:text="Shizuku setup required"
-                            android:textAppearance="@style/TextAppearance.Material3.BodySmall"
-                            android:textColor="@color/orange_500"
-                            android:visibility="gone" />
+                            android:layout_marginTop="4dp"
+                            android:text="Preparing audio system..."
+                            android:textColor="@color/cafe_warm"
+                            android:textSize="14sp" />
+
                     </LinearLayout>
 
-                    <!-- Refresh Button -->
-                    <ImageView
-                        android:id="@+id/btnRefreshStatus"
-                        android:layout_width="32dp"
-                        android:layout_height="32dp"
-                        android:padding="4dp"
-                        android:background="?attr/selectableItemBackgroundBorderless"
-                        android:src="@drawable/ic_refresh"
-                        app:tint="@color/gray_700"
-                        android:contentDescription="Refresh Status"/>
+                    <!-- Status Indicator -->
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <ImageView
+                            android:id="@+id/ivStatusIcon"
+                            android:layout_width="32dp"
+                            android:layout_height="32dp"
+                            android:layout_marginEnd="12dp"
+                            android:src="@drawable/ic_cafe_inactive"
+                            app:tint="@color/gray_500" />
+
+                        <ImageView
+                            android:id="@+id/btnRefreshStatus"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:padding="8dp"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            android:src="@drawable/ic_refresh"
+                            app:tint="@color/cafe_accent"
+                            android:contentDescription="Refresh Status" />
+
+                    </LinearLayout>
+
+                </LinearLayout>
+
+                <!-- Master Toggle -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:background="@drawable/status_background"
+                    android:padding="20dp">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Café Mode"
+                            android:textColor="@color/cafe_brown"
+                            android:textSize="18sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="Transform your audio experience"
+                            android:textColor="@color/cafe_warm"
+                            android:textSize="13sp" />
+
+                    </LinearLayout>
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/toggleCafeMode"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:scaleX="1.3"
+                        android:scaleY="1.3"
+                        app:thumbTint="@color/cafe_accent"
+                        app:trackTint="@color/cafe_cream" />
 
                 </LinearLayout>
 
@@ -166,80 +209,102 @@
 
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Controls Card -->
+        <!-- Audio Controls - Wavelet-Inspired Design -->
         <com.google.android.material.card.MaterialCardView
-            android:id="@+id/controlsCard"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="32dp"
+            android:layout_marginBottom="28dp"
             app:cardBackgroundColor="@color/md_theme_light_surface"
             app:cardCornerRadius="24dp"
-            app:cardElevation="6dp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/toggleCard"
+            app:cardElevation="8dp"
             app:strokeColor="@color/cafe_cream"
-            app:strokeWidth="1dp">
+            app:strokeWidth="2dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="32dp">
+                android:padding="28dp">
 
-                <TextView
+                <!-- Controls Header -->
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="24dp"
-                    android:text="Audio Controls"
-                    android:textAppearance="@style/TextAppearance.Material3.HeadlineSmall"
-                    android:textColor="@color/cafe_brown"
-                    android:textAlignment="center"
-                    android:fontFamily="@font/cafe_display" />
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="32dp">
+
+                    <ImageView
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:layout_marginEnd="16dp"
+                        android:src="@drawable/ic_toggle"
+                        app:tint="@color/cafe_accent" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Audio Processing"
+                        android:textColor="@color/cafe_brown"
+                        android:textSize="22sp"
+                        android:textStyle="bold" />
+
+                </LinearLayout>
 
                 <!-- Intensity Control -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="24dp"
-                    android:orientation="vertical">
+                    android:orientation="vertical"
+                    android:layout_marginBottom="32dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
-                        android:gravity="center_vertical">
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="8dp">
 
                         <TextView
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:text="Intensity"
-                            android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
-                            android:textColor="@color/cafe_brown" />
+                            android:textColor="@color/cafe_brown"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
 
-                        <TextView
-                            android:id="@+id/tvIntensityValue"
+                        <com.google.android.material.card.MaterialCardView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="70%"
-                            android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
-                            android:textColor="@color/cafe_accent"
-                            android:minWidth="48dp"
-                            android:textAlignment="center"
-                            android:background="@drawable/value_background"
-                            android:padding="8dp" />
+                            app:cardBackgroundColor="@color/cafe_accent"
+                            app:cardCornerRadius="16dp"
+                            app:cardElevation="4dp">
+
+                            <TextView
+                                android:id="@+id/tvIntensityValue"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="70%"
+                                android:textColor="@color/white"
+                                android:textSize="14sp"
+                                android:textStyle="bold"
+                                android:minWidth="52dp"
+                                android:gravity="center"
+                                android:paddingHorizontal="16dp"
+                                android:paddingVertical="8dp" />
+
+                        </com.google.android.material.card.MaterialCardView>
 
                     </LinearLayout>
 
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:layout_marginBottom="16dp"
                         android:text="Controls the strength of the café effect"
-                        android:textAppearance="@style/TextAppearance.Material3.BodySmall"
-                        android:textColor="@color/cafe_warm" />
+                        android:textColor="@color/cafe_warm"
+                        android:textSize="13sp"
+                        android:layout_marginBottom="16dp" />
 
                     <com.google.android.material.slider.Slider
                         android:id="@+id/sliderIntensity"
@@ -252,64 +317,67 @@
                         app:thumbColor="@color/cafe_accent"
                         app:trackColorActive="@color/cafe_accent"
                         app:trackColorInactive="@color/cafe_cream"
-                        app:haloColor="@color/cafe_cream"
-                        app:trackHeight="8dp"
-                        app:thumbRadius="14dp"
-                        app:haloRadius="24dp" />
+                        app:haloColor="@color/cafe_accent"
+                        app:trackHeight="10dp"
+                        app:thumbRadius="16dp"
+                        app:haloRadius="28dp" />
 
                 </LinearLayout>
-
-                <!-- Divider -->
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:layout_marginVertical="16dp"
-                    android:background="@color/cafe_cream"
-                    android:alpha="0.5" />
 
                 <!-- Spatial Width Control -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="24dp"
-                    android:orientation="vertical">
+                    android:orientation="vertical"
+                    android:layout_marginBottom="32dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
-                        android:gravity="center_vertical">
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="8dp">
 
                         <TextView
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:text="Spatial Width"
-                            android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
-                            android:textColor="@color/cafe_brown" />
+                            android:textColor="@color/cafe_brown"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
 
-                        <TextView
-                            android:id="@+id/tvSpatialWidthValue"
+                        <com.google.android.material.card.MaterialCardView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="60%"
-                            android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
-                            android:textColor="@color/cafe_accent"
-                            android:minWidth="48dp"
-                            android:textAlignment="center"
-                            android:background="@drawable/value_background"
-                            android:padding="8dp" />
+                            app:cardBackgroundColor="@color/cafe_accent"
+                            app:cardCornerRadius="16dp"
+                            app:cardElevation="4dp">
+
+                            <TextView
+                                android:id="@+id/tvSpatialWidthValue"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="60%"
+                                android:textColor="@color/white"
+                                android:textSize="14sp"
+                                android:textStyle="bold"
+                                android:minWidth="52dp"
+                                android:gravity="center"
+                                android:paddingHorizontal="16dp"
+                                android:paddingVertical="8dp" />
+
+                        </com.google.android.material.card.MaterialCardView>
 
                     </LinearLayout>
 
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:layout_marginBottom="16dp"
                         android:text="Adjusts stereo widening using Sony effects"
-                        android:textAppearance="@style/TextAppearance.Material3.BodySmall"
-                        android:textColor="@color/cafe_warm" />
+                        android:textColor="@color/cafe_warm"
+                        android:textSize="13sp"
+                        android:layout_marginBottom="16dp" />
 
                     <com.google.android.material.slider.Slider
                         android:id="@+id/sliderSpatialWidth"
@@ -322,20 +390,12 @@
                         app:thumbColor="@color/cafe_accent"
                         app:trackColorActive="@color/cafe_accent"
                         app:trackColorInactive="@color/cafe_cream"
-                        app:haloColor="@color/cafe_cream"
-                        app:trackHeight="8dp"
-                        app:thumbRadius="14dp"
-                        app:haloRadius="24dp" />
+                        app:haloColor="@color/cafe_accent"
+                        app:trackHeight="10dp"
+                        app:thumbRadius="16dp"
+                        app:haloRadius="28dp" />
 
                 </LinearLayout>
-
-                <!-- Divider -->
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:layout_marginVertical="16dp"
-                    android:background="@color/cafe_cream"
-                    android:alpha="0.5" />
 
                 <!-- Distance Control -->
                 <LinearLayout
@@ -347,38 +407,49 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
-                        android:gravity="center_vertical">
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="8dp">
 
                         <TextView
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
                             android:text="Distance"
-                            android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
-                            android:textColor="@color/cafe_brown" />
+                            android:textColor="@color/cafe_brown"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
 
-                        <TextView
-                            android:id="@+id/tvDistanceValue"
+                        <com.google.android.material.card.MaterialCardView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="80%"
-                            android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
-                            android:textColor="@color/cafe_accent"
-                            android:minWidth="48dp"
-                            android:textAlignment="center"
-                            android:background="@drawable/value_background"
-                            android:padding="8dp" />
+                            app:cardBackgroundColor="@color/cafe_accent"
+                            app:cardCornerRadius="16dp"
+                            app:cardElevation="4dp">
+
+                            <TextView
+                                android:id="@+id/tvDistanceValue"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="80%"
+                                android:textColor="@color/white"
+                                android:textSize="14sp"
+                                android:textStyle="bold"
+                                android:minWidth="52dp"
+                                android:gravity="center"
+                                android:paddingHorizontal="16dp"
+                                android:paddingVertical="8dp" />
+
+                        </com.google.android.material.card.MaterialCardView>
 
                     </LinearLayout>
 
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
-                        android:layout_marginBottom="16dp"
                         android:text="Simulates perceived distance from speakers"
-                        android:textAppearance="@style/TextAppearance.Material3.BodySmall"
-                        android:textColor="@color/cafe_warm" />
+                        android:textColor="@color/cafe_warm"
+                        android:textSize="13sp"
+                        android:layout_marginBottom="16dp" />
 
                     <com.google.android.material.slider.Slider
                         android:id="@+id/sliderDistance"
@@ -391,10 +462,10 @@
                         app:thumbColor="@color/cafe_accent"
                         app:trackColorActive="@color/cafe_accent"
                         app:trackColorInactive="@color/cafe_cream"
-                        app:haloColor="@color/cafe_cream"
-                        app:trackHeight="8dp"
-                        app:thumbRadius="14dp"
-                        app:haloRadius="24dp" />
+                        app:haloColor="@color/cafe_accent"
+                        app:trackHeight="10dp"
+                        app:thumbRadius="16dp"
+                        app:haloRadius="28dp" />
 
                 </LinearLayout>
 
@@ -402,16 +473,12 @@
 
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Action Buttons -->
+        <!-- Action Buttons - Modern Grid Layout -->
         <LinearLayout
-            android:id="@+id/actionButtons"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginBottom="24dp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/controlsCard">
+            android:layout_marginBottom="28dp">
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnShizukuSetup"
@@ -419,16 +486,17 @@
                 android:layout_height="56dp"
                 android:layout_weight="1"
                 android:layout_marginEnd="8dp"
-                android:text="Shizuku"
-                android:textAppearance="@style/TextAppearance.Material3.LabelLarge"
-                app:icon="@drawable/ic_warning"
+                android:text="Setup"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                app:icon="@drawable/ic_settings"
                 app:iconGravity="textStart"
                 app:iconPadding="8dp"
                 app:iconSize="20dp"
-                app:iconTint="@color/orange_500"
-                app:strokeColor="@color/orange_500"
+                app:iconTint="@color/cafe_accent"
+                app:strokeColor="@color/cafe_accent"
                 app:strokeWidth="2dp"
-                app:cornerRadius="16dp"
+                app:cornerRadius="18dp"
                 style="@style/Widget.Material3.Button.OutlinedButton" />
 
             <com.google.android.material.button.MaterialButton
@@ -438,15 +506,16 @@
                 android:layout_weight="1"
                 android:layout_marginHorizontal="4dp"
                 android:text="Settings"
-                android:textAppearance="@style/TextAppearance.Material3.LabelLarge"
+                android:textSize="14sp"
+                android:textStyle="bold"
                 app:icon="@drawable/ic_settings"
                 app:iconGravity="textStart"
                 app:iconPadding="8dp"
                 app:iconSize="20dp"
-                app:iconTint="@color/cafe_brown"
+                app:iconTint="@color/cafe_accent"
                 app:strokeColor="@color/cafe_accent"
                 app:strokeWidth="2dp"
-                app:cornerRadius="16dp"
+                app:cornerRadius="18dp"
                 style="@style/Widget.Material3.Button.OutlinedButton" />
 
             <com.google.android.material.button.MaterialButton
@@ -456,32 +525,47 @@
                 android:layout_weight="1"
                 android:layout_marginStart="8dp"
                 android:text="About"
-                android:textAppearance="@style/TextAppearance.Material3.LabelLarge"
+                android:textSize="14sp"
+                android:textStyle="bold"
                 app:icon="@drawable/ic_info"
                 app:iconGravity="textStart"
                 app:iconPadding="8dp"
                 app:iconSize="20dp"
                 app:iconTint="@color/white"
                 app:backgroundTint="@color/cafe_accent"
-                app:cornerRadius="16dp"
+                app:cornerRadius="18dp"
                 style="@style/Widget.Material3.Button" />
 
         </LinearLayout>
 
-        <!-- Footer -->
-        <TextView
+        <!-- Footer with Version Info -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="© 2025 CaféTone Audio • Sony Café Mode DSP Technology"
-            android:textAppearance="@style/TextAppearance.Material3.BodySmall"
-            android:textColor="@color/cafe_warm"
-            android:textAlignment="center"
-            android:alpha="0.6"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/actionButtons" />
+            android:orientation="vertical"
+            android:gravity="center"
+            android:padding="16dp">
 
-    </androidx.constraintlayout.widget.ConstraintLayout>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="CaféTone Audio Engine"
+                android:textColor="@color/cafe_brown"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:alpha="0.7" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="Sony XM6 DSP Technology • v1.0"
+                android:textColor="@color/cafe_warm"
+                android:textSize="11sp"
+                android:alpha="0.6" />
+
+        </LinearLayout>
+
+    </LinearLayout>
 
 </ScrollView>

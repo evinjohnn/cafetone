@@ -1,19 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!--
-    ================================================
-    FIX: ADDED 'primary' and 'on_primary' for launcher icons
-    ================================================
-    -->
+    <!-- Material 3 Base Colors -->
     <color name="primary">#6F4E37</color>
     <color name="on_primary">#FFFFFF</color>
-
 
     <!-- Material 3 Dynamic Colors - Light Theme -->
     <color name="md_theme_light_primary">#6F4E37</color>
     <color name="md_theme_light_onPrimary">#FFFFFF</color>
     <color name="md_theme_light_primaryContainer">#F7EDE7</color>
-
     <color name="md_theme_light_onPrimaryContainer">#2D1B0F</color>
     <color name="md_theme_light_secondary">#8B4513</color>
     <color name="md_theme_light_onSecondary">#FFFFFF</color>
@@ -27,11 +21,11 @@
     <color name="md_theme_light_onError">#FFFFFF</color>
     <color name="md_theme_light_errorContainer">#F9DEDC</color>
     <color name="md_theme_light_onErrorContainer">#410E0B</color>
-    <color name="md_theme_light_background">#FFFBFF</color>
+    <color name="md_theme_light_background">#FFF8F5</color>
     <color name="md_theme_light_onBackground">#1C1B1F</color>
     <color name="md_theme_light_surface">#FFFBFF</color>
     <color name="md_theme_light_onSurface">#1C1B1F</color>
-    <color name="md_theme_light_surfaceVariant">#E7E0EC</color>
+    <color name="md_theme_light_surfaceVariant">#F5F0EA</color>
     <color name="md_theme_light_onSurfaceVariant">#49454F</color>
     <color name="md_theme_light_outline">#79747E</color>
     <color name="md_theme_light_outlineVariant">#CAC4D0</color>
@@ -57,9 +51,9 @@
     <color name="md_theme_dark_onError">#601410</color>
     <color name="md_theme_dark_errorContainer">#8C1D18</color>
     <color name="md_theme_dark_onErrorContainer">#F9DEDC</color>
-    <color name="md_theme_dark_background">#10100F</color>
+    <color name="md_theme_dark_background">#1A1611</color>
     <color name="md_theme_dark_onBackground">#E6E1E5</color>
-    <color name="md_theme_dark_surface">#10100F</color>
+    <color name="md_theme_dark_surface">#1A1611</color>
     <color name="md_theme_dark_onSurface">#E6E1E5</color>
     <color name="md_theme_dark_surfaceVariant">#49454F</color>
     <color name="md_theme_dark_onSurfaceVariant">#CAC4D0</color>
@@ -70,26 +64,39 @@
     <color name="md_theme_dark_inverseOnSurface">#313033</color>
     <color name="md_theme_dark_inversePrimary">#6F4E37</color>
 
-    <!-- CaféTone Specific Colors -->
-    <color name="cafe_brown">#5D4037</color>      <!-- A rich, dark coffee brown -->
-    <color name="cafe_accent">#A1662F</color>     <!-- A warm, saddle brown accent -->
-    <color name="cafe_cream">#F5EFE6</color>      <!-- A light, creamy off-white -->
-    <color name="cafe_warm">#8D6E63</color>       <!-- A warm, muted brown/taupe -->
-    <color name="cafe_gold">#D4AF37</color>       <!-- A subtle gold for highlights -->
+    <!-- CaféTone Premium Brand Colors -->
+    <color name="cafe_brown">#5D4037</color>          <!-- Rich espresso brown -->
+    <color name="cafe_accent">#8B4513</color>         <!-- Warm saddle brown -->
+    <color name="cafe_cream">#F5F0EA</color>          <!-- Creamy latte -->
+    <color name="cafe_warm">#8D6E63</color>           <!-- Warm taupe -->
+    <color name="cafe_gold">#D4AF37</color>           <!-- Golden highlights -->
+    <color name="cafe_dark">#3E2723</color>           <!-- Dark chocolate -->
+    <color name="cafe_light">#FFF8F0</color>          <!-- Light cream -->
 
-    <!-- Status Colors -->
+    <!-- Enhanced Status Colors -->
     <color name="status_active">#4CAF50</color>
     <color name="status_inactive">#9E9E9E</color>
-    <color name="status_warning">#FFC107</color>
+    <color name="status_warning">#FF9800</color>
     <color name="status_error">#F44336</color>
+    <color name="status_success">#4CAF50</color>
+    <color name="status_info">#2196F3</color>
 
     <!-- Common Colors -->
-    <color name="white">#FFFFFFFF</color>
-    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
     <color name="transparent">#00000000</color>
     <color name="green_500">#4CAF50</color>
     <color name="orange_500">#FF9800</color>
     <color name="gray_500">#9E9E9E</color>
     <color name="gray_700">#616161</color>
-    <color name="notification_color">#2196F3</color>
+    <color name="notification_color">#8B4513</color>
+    
+    <!-- Gradient Colors -->
+    <color name="gradient_start">#8B4513</color>
+    <color name="gradient_end">#D4A574</color>
+    
+    <!-- Surface Colors -->
+    <color name="surface_elevated">#FFFFFF</color>
+    <color name="surface_tonal">#F5F0EA</color>
+    <color name="surface_container">#FFFBFF</color>
 </resources>
