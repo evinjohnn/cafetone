@@ -1,6 +1,6 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
 plugins {
-    id 'com.android.application' version '8.11.0' apply false // Use a stable version
+    id 'com.android.application' version '8.1.4' apply false // Use a stable version
     id 'org.jetbrains.kotlin.android' version '1.9.21' apply false // Match common stable versions
     id 'com.google.gms.google-services' version '4.4.2' apply false
     id 'com.google.firebase.crashlytics' version '3.0.1' apply false // <-- ADD THIS LINE
