@@ -20,6 +20,7 @@ import com.cafetone.audio.dsp.CafeModeDSP
 import com.cafetone.audio.engagement.UserEngagementManager
 import com.cafetone.audio.playstore.PlayStoreIntegration
 import com.cafetone.audio.update.UpdateManager
+import java.lang.reflect.Field
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.*
@@ -43,6 +44,18 @@ class CafeModeService : Service() {
         private val EFFECT_UUID_CAFETONE = UUID.fromString("87654321-4321-8765-4321-fedcba098765")
         private const val NOTIFICATION_ID = 101
         private const val CHANNEL_ID = "CafeModeServiceChannel"
+
+        // CORRECTED: Access the hidden EFFECT_TYPE_NULL via reflection
+        private val EFFECT_TYPE_NULL: UUID by lazy {
+            try {
+                val field: Field = AudioEffect::class.java.getField("EFFECT_TYPE_NULL")
+                field.get(null) as UUID
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to get EFFECT_TYPE_NULL, using fallback UUID", e)
+                // This is a known fallback UUID that works on many devices for a null effect
+                UUID.fromString("ec7178ec-e5e1-4432-a3f4-4657e6795210")
+            }
+        }
     }
 
     inner class LocalBinder : Binder() {
@@ -64,7 +77,6 @@ class CafeModeService : Service() {
         }
 
         createNotificationChannel()
-        // CORRECTED: Use ServiceInfo for foreground service type
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val foregroundServiceType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
@@ -79,8 +91,8 @@ class CafeModeService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        when (intent?.action) {
-            "STOP" -> stopProcessing()
+        if (intent?.action == "STOP") {
+            stopProcessing()
         }
         return START_STICKY
     }
@@ -91,11 +103,10 @@ class CafeModeService : Service() {
         if (isEnabled) return
         if (!shizukuIntegration.isPermissionGranted) {
             Log.e(TAG, "Cannot start processing, Shizuku permission not granted.")
-            shizukuIntegration.checkShizukuAvailability() // Re-trigger permission request if needed
+            shizukuIntegration.checkShizukuAvailability()
             updateStatus()
             return
         }
-
         try {
             setupGlobalAudioEffect()
             if (audioEffect != null) {
@@ -109,9 +120,9 @@ class CafeModeService : Service() {
             updateStatus()
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start audio processing", e)
+            analyticsManager.logError("start_processing_failed", e)
             isEnabled = false
             updateStatus()
-            analyticsManager.logError("start_processing_failed", e)
         }
     }
 
@@ -129,6 +140,24 @@ class CafeModeService : Service() {
         }
     }
 
+    // CORRECTED: This reflection-based method is necessary for hidden APIs.
+    @SuppressLint("DiscouragedPrivateApi")
+    private fun createAudioEffect(type: UUID, uuid: UUID, priority: Int, audioSession: Int): AudioEffect? {
+        return try {
+            val constructor = AudioEffect::class.java.getDeclaredConstructor(
+                UUID::class.java,
+                UUID::class.java,
+                Int::class.javaPrimitiveType,
+                Int::class.javaPrimitiveType
+            )
+            constructor.isAccessible = true
+            constructor.newInstance(type, uuid, priority, audioSession) as AudioEffect
+        } catch (e: Exception) {
+            Log.e(TAG, "Error creating AudioEffect via reflection", e)
+            null
+        }
+    }
+
     @SuppressLint("DiscouragedPrivateApi")
     private fun setEffectParam(paramId: Int, value: Float) {
         audioEffect?.let { effect ->
@@ -142,7 +171,6 @@ class CafeModeService : Service() {
                 val v = ByteBuffer.allocate(4).order(ByteOrder.nativeOrder()).putFloat(value).array()
                 val setParameterMethod = AudioEffect::class.java.getMethod("setParameter", ByteArray::class.java, ByteArray::class.java)
                 setParameterMethod.invoke(effect, p, v)
-
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to set parameter on AudioEffect", e)
             }
@@ -152,26 +180,22 @@ class CafeModeService : Service() {
     private fun setupGlobalAudioEffect() {
         try {
             Log.i(TAG, "Attempting to create global AudioEffect for session 0...")
-            // CORRECTED: This is the standard, public constructor for global effects.
-            // It was correct in my previous answer, but confirming it here.
-            audioEffect = AudioEffect(
-                AudioEffect.EFFECT_TYPE_NULL,
-                EFFECT_UUID_CAFETONE,
-                0, // priority
-                0  // session ID 0 = Global Output Mix
-            )
+            // CORRECTED: Use the reflection-based creator method
+            audioEffect = createAudioEffect(EFFECT_TYPE_NULL, EFFECT_UUID_CAFETONE, 0, 0)
+
+            if (audioEffect == null) {
+                throw Exception("Failed to create custom audio effect via reflection.")
+            }
 
             audioEffect?.enabled = true
             setAllParams()
             Log.i(TAG, "Global AudioEffect enabled successfully for session 0.")
-
         } catch (e: Exception) {
             Log.e(TAG, "Failed to setup global AudioEffect", e)
             analyticsManager.logError("setup_global_audio_effect_failed", e)
             audioEffect = null
         }
     }
-
 
     private fun setAllParams() {
         setIntensity(cafeModeDSP.getIntensity())
@@ -182,8 +206,7 @@ class CafeModeService : Service() {
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val serviceChannel = NotificationChannel(CHANNEL_ID, "Cafe Mode Service", NotificationManager.IMPORTANCE_LOW)
-            val manager = getSystemService(NotificationManager::class.java)
-            manager.createNotificationChannel(serviceChannel)
+            getSystemService(NotificationManager::class.java).createNotificationChannel(serviceChannel)
         }
     }
 

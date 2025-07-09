@@ -80,6 +80,16 @@
             </intent-filter>
         </service>
 
+        <!-- Command User Service (from new code) -->
+        <service
+            android:name=".service.CommandUserService"
+            android:exported="true"
+            tools:ignore="ExportedService">
+            <intent-filter>
+                <action android:name="com.cafetone.audio.service.CommandUserService" />
+            </intent-filter>
+        </service>
+
         <!-- Firebase Cloud Messaging Service -->
         <service
             android:name=".service.CafeToneMessagingService"
