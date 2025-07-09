@@ -69,7 +69,7 @@ class PrivilegedAudioService : Service() {
             release()
         }
         try {
-            Log.i(TAG, "Attempting to create global AudioEffect (session 0) from privileged process...")
+            Log.i(TAG, "Attempting to create global AudioEffect (session 0)...")
             audioEffect = createAudioEffect(EFFECT_TYPE_NULL, EFFECT_UUID_CAFETONE, 0, 0)
             Log.i(TAG, "Global AudioEffect created successfully: ${audioEffect != null}")
         } catch (e: Throwable) {
