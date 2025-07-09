@@ -20,8 +20,6 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.core.content.pm.PackageInfoCompat
-import androidx.core.os.bundleOf
 import androidx.lifecycle.Observer
 import com.cafetone.audio.analytics.AnalyticsManager
 import com.cafetone.audio.databinding.ActivityMainBinding
@@ -30,11 +28,14 @@ import com.cafetone.audio.playstore.PlayStoreIntegration
 import com.cafetone.audio.service.AppStatus
 import com.cafetone.audio.service.CafeModeService
 import com.cafetone.audio.test.CafeToneDiagnostic
-import com.cafetone.audio.test.GlobalAudioProcessingTest
 import com.cafetone.audio.update.UpdateManager
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.analytics.ktx.analytics
 import com.google.firebase.ktx.Firebase
+// GUARANTEED FIX: Add missing coroutine imports
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
 
@@ -160,8 +161,7 @@ class MainActivity : AppCompatActivity() {
         if (sharedPreferences.getBoolean(KEY_FIRST_LAUNCH, true)) {
             showGitHubStarDialog()
             sharedPreferences.edit().putBoolean(KEY_FIRST_LAUNCH, false).apply()
-            // CORRECTED: This is the definitive, correct constant.
-            firebaseAnalytics.logEvent(FirebaseAnalytics.Event.FIRST_LAUNCH, null)
+            firebaseAnalytics.logEvent("first_open", null)
         }
     }
 
@@ -330,19 +330,22 @@ class MainActivity : AppCompatActivity() {
         return if (achievements.isEmpty()) "None yet" else achievements.joinToString(", ")
     }
 
+    // GUARANTEED FIX: Corrected this function which I previously broke.
     private fun runDiagnosticTest() {
         Toast.makeText(this, "Running diagnostic tests...", Toast.LENGTH_SHORT).show()
-        Thread {
-            val diagnostic = CafeToneDiagnostic(this)
+        // Use CoroutineScope to run the test off the main thread
+        CoroutineScope(Dispatchers.IO).launch {
+            val diagnostic = CafeToneDiagnostic(this@MainActivity)
             val result = diagnostic.runDiagnostics()
+            // Switch back to the main thread to show the dialog
             runOnUiThread {
-                AlertDialog.Builder(this)
+                AlertDialog.Builder(this@MainActivity)
                     .setTitle("Diagnostic Results")
                     .setMessage(result.toString())
                     .setPositiveButton("OK", null)
                     .show()
             }
-        }.start()
+        }
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {

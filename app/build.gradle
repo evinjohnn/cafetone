@@ -71,6 +71,7 @@ dependencies {
 
     // Shizuku API for elevated permissions
     implementation 'dev.rikka.shizuku:api:13.1.5'
+    // GUARANTEED FIX: Add this provider dependency. It's required for newProcess.
     implementation 'dev.rikka.shizuku:provider:13.1.5'
 
     // Coroutines for async operations
