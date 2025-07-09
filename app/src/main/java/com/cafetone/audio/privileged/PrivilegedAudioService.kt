@@ -1,11 +1,11 @@
 package com.cafetone.audio.privileged
 
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.media.audiofx.AudioEffect
 import android.os.IBinder
 import android.os.RemoteException
 import android.util.Log
-import com.cafetone.audio.dsp.CafeModeDSP
 import rikka.shizuku.api.service.ShizukuService
 import java.lang.reflect.Field
 import java.nio.ByteBuffer
@@ -51,7 +51,7 @@ class PrivilegedAudioService : ShizukuService() {
         }
     }
 
-    override fun onBind(intent: android.content.Intent?): IBinder {
+    override fun onBind(intent: Intent?): IBinder {
         return binder
     }
 
@@ -137,11 +137,9 @@ class PrivilegedAudioService : ShizukuService() {
         Log.i(TAG, "PrivilegedAudioService is being destroyed.")
         release()
         super.onDestroy()
-        // Shizuku recommends calling System.exit() to ensure the process is terminated
         System.exit(0)
     }
 
-    // This is the special "destroy" method Shizuku calls
     @Throws(RemoteException::class)
     override fun destroy() {
         super.destroy()
