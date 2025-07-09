@@ -63,12 +63,24 @@ class CafeModeDSP {
                 Log.i(TAG, "Sony Café Mode DSP engine initialized successfully")
             } else {
                 Log.e(TAG, "Failed to initialize Sony Café Mode DSP engine: $result")
+                // Try fallback initialization
+                initializeFallback()
             }
             result
         } catch (e: Exception) {
             Log.e(TAG, "Exception during Sony Café Mode DSP initialization", e)
+            // Initialize fallback mode
+            initializeFallback()
             -1
         }
+    }
+    
+    /**
+     * Fallback initialization when native library is not available
+     */
+    private fun initializeFallback() {
+        isInitialized = true
+        Log.w(TAG, "Sony Café Mode DSP running in fallback mode (native library not available)")
     }
     
     /**
