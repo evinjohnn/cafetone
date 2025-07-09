@@ -421,6 +421,39 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun runDiagnosticTest() {
+        Toast.makeText(this, "Running CaféTone diagnostic tests...", Toast.LENGTH_SHORT).show()
+        
+        Thread {
+            val diagnostic = CafeToneDiagnostic(this)
+            val result = diagnostic.runDiagnostics()
+            
+            runOnUiThread {
+                AlertDialog.Builder(this)
+                    .setTitle("CaféTone Diagnostic Results")
+                    .setMessage("""
+                        ${result.overallStatus}
+                        
+                        Test Results:
+                        ${if (result.shizukuAvailable) "✅" else "❌"} Shizuku Available
+                        ${if (result.shizukuPermissionGranted) "✅" else "❌"} Shizuku Permission Granted
+                        ${if (result.dspInitialized) "✅" else "❌"} DSP Initialized
+                        ${if (result.audioPermissionsGranted) "✅" else "❌"} Audio Permissions Granted
+                        
+                        ${when {
+                            !result.shizukuAvailable -> "Install Shizuku from Play Store and enable it in settings."
+                            !result.shizukuPermissionGranted -> "Grant Shizuku permission when prompted."
+                            !result.dspInitialized -> "DSP initialization failed - this may be expected in emulator."
+                            !result.audioPermissionsGranted -> "Audio permissions will be granted automatically via Shizuku."
+                            else -> "All systems ready! Try enabling Café Mode."
+                        }}
+                    """.trimIndent())
+                    .setPositiveButton("OK", null)
+                    .show()
+            }
+        }.start()
+    }
+
     private fun runGlobalProcessingTests() {
         Toast.makeText(this, "Running global audio processing tests...", Toast.LENGTH_SHORT).show()
         firebaseAnalytics.logEvent("global_processing_test_started", null)
