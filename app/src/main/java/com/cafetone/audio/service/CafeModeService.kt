@@ -5,7 +5,9 @@ import android.app.*
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.media.audiofx.AudioEffect // <-- FIX: Added this import
+import android.media.audiofx.AudioEffect
+import android.media.audiofx.AudioEffect.Descriptor
+import android.media.audiofx.AudioEffect.OnControlStatusChangeListener
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
@@ -20,50 +22,33 @@ import com.cafetone.audio.analytics.AnalyticsManager
 import com.cafetone.audio.dsp.CafeModeDSP
 import com.cafetone.audio.engagement.UserEngagementManager
 import com.cafetone.audio.playstore.PlayStoreIntegration
-import com.cafetone.audio.system.AudioPolicyManager
-import com.cafetone.audio.update.UpdateManager
-import java.lang.reflect.Method
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.*
 
-data class AppStatus(val isEnabled: Boolean, val shizukuMessage: String, val isShizukuReady: Boolean)
-
 class CafeModeService : Service() {
-
-    companion object {
-        private const val TAG = "CafeToneService"
-        private const val NOTIFICATION_ID = 1001
-        private const val CHANNEL_ID = "cafetone_channel"
-        private val EFFECT_UUID_CAFETONE = UUID.fromString("87654321-4321-8765-4321-fedcba098765")
-        const val ACTION_TOGGLE = "com.cafetone.audio.TOGGLE"
-    }
-
     private val binder = LocalBinder()
+    private lateinit var cafeModeDSP: CafeModeDSP
     private var audioEffect: AudioEffect? = null
-    private var isServiceRunning = false
-    private lateinit var shizukuIntegration: ShizukuIntegration
-
-    // Sony Café Mode DSP Engine
-    private var cafeModeDSP: CafeModeDSP? = null
-
-    // Global Audio Processing Manager
-    private var audioPolicyManager: AudioPolicyManager? = null
-
-    // Advanced Features
-    private lateinit var analyticsManager: AnalyticsManager
-    private lateinit var engagementManager: UserEngagementManager
-    private lateinit var playStoreIntegration: PlayStoreIntegration
-    private lateinit var updateManager: UpdateManager
-
-    // Sony Café Mode Parameters
-    private var intensity = 0.7f
-    private var spatialWidth = 0.6f
-    private var distance = 0.8f
     private var isEnabled = false
+    private lateinit var analyticsManager: AnalyticsManager
+    private lateinit var userEngagementManager: UserEngagementManager
+    private lateinit var playStoreIntegration: PlayStoreIntegration
 
+    // Service state
+    private val _serviceState = MutableLiveData<ServiceState>()
+    val serviceState: LiveData<ServiceState> = _serviceState
+
+    // App status
     private val _status = MutableLiveData<AppStatus>()
     val status: LiveData<AppStatus> = _status
+
+    companion object {
+        private const val TAG = "CafeModeService"
+        private val EFFECT_UUID_CAFETONE = UUID.fromString("00000000-0000-0000-0000-000000000000")
+        private const val NOTIFICATION_ID = 101
+        private const val CHANNEL_ID = "CafeModeServiceChannel"
+    }
 
     inner class LocalBinder : Binder() {
         fun getService(): CafeModeService = this@CafeModeService
@@ -71,231 +56,145 @@ class CafeModeService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-
-        // Initialize advanced features
-        analyticsManager = AnalyticsManager(this)
-        engagementManager = UserEngagementManager(this)
-        playStoreIntegration = PlayStoreIntegration(this)
-        updateManager = UpdateManager(this)
-
-        // Initialize all systems
-        analyticsManager.initialize()
-        playStoreIntegration.initialize()
-        updateManager.initialize()
-
-        // Initialize Shizuku and DSP
-        shizukuIntegration = ShizukuIntegration(this)
-        shizukuIntegration.initialize { onShizukuStatusChanged() }
-
-        // Initialize Sony Café Mode DSP
-        initializeCafeModeDSP()
-
-        // Initialize global audio processing
-        initializeGlobalAudioProcessing()
-
+        analyticsManager = AnalyticsManager(applicationContext)
+        userEngagementManager = UserEngagementManager(applicationContext)
+        playStoreIntegration = PlayStoreIntegration(applicationContext)
+        cafeModeDSP = CafeModeDSP()
         createNotificationChannel()
-        updateStatus()
-
-        Log.i(TAG, "CafeModeService created with advanced features and global processing")
-    }
-
-    private fun initializeCafeModeDSP() {
-        try {
-            cafeModeDSP = CafeModeDSP()
-            val result = cafeModeDSP?.init()
-
-            if (result == 0) {
-                Log.i(TAG, "Sony Café Mode DSP initialized successfully")
-
-                // Set default parameters
-                cafeModeDSP?.setIntensity(intensity)
-                cafeModeDSP?.setSpatialWidth(spatialWidth)
-                cafeModeDSP?.setDistance(distance)
-
-            } else {
-                Log.e(TAG, "Failed to initialize Sony Café Mode DSP: $result")
-                cafeModeDSP = null
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Exception during Sony Café Mode DSP initialization", e)
-            cafeModeDSP = null
-            analyticsManager.trackCrash(e, "DSP Initialization")
-        }
-    }
-
-    private fun initializeGlobalAudioProcessing() {
-        try {
-            // FIX: I advised removing this earlier. We will remove it now.
-            // audioPolicyManager = AudioPolicyManager(this)
-            // audioPolicyManager?.initialize()
-            // audioPolicyManager?.setAudioProcessingCallback { audioBuffer, sampleCount ->
-            //     processAudioThroughSonyDSP(audioBuffer, sampleCount)
-            // }
-            Log.i(TAG, "Global audio processing will be handled by AudioEffect, not AudioPolicyManager.")
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to initialize global audio processing", e)
-            audioPolicyManager = null
-            analyticsManager.trackCrash(e, "Global Audio Processing Initialization")
-        }
-    }
-
-    private fun processAudioThroughSonyDSP(audioBuffer: FloatArray, sampleCount: Int) {
-        if (!isEnabled || cafeModeDSP == null) return
-
-        try {
-            // This logic would be part of AudioPolicyManager, which is being removed.
-            // The native C++ process callback is called automatically by AudioFlinger.
-        } catch (e: Exception) {
-            Log.e(TAG, "Error processing audio through Sony DSP", e)
-        }
-    }
-
-    private fun onShizukuStatusChanged() {
-        val granted = shizukuIntegration.isPermissionGranted
-        Log.d(TAG, "onShizukuStatusChanged called. isPermissionGranted = $granted")
-
-        if (granted) {
-            Log.d(TAG, "Shizuku permission granted, setting up global audio processing")
-            shizukuIntegration.grantAudioPermissions()
-            setupAudioEffect()
-
-            // FIX: Removed calls to the deleted AudioPolicyManager
-            // audioPolicyManager?.registerGlobalAudioProcessor()
-            // audioPolicyManager?.startGlobalAudioInterception()
-        }
-
-        updateStatus()
-        analyticsManager.trackShizukuSetup(granted)
-    }
-
-    fun forceShizukuCheck() {
-        Log.d(TAG, "Manual refresh triggered from UI")
-        shizukuIntegration.checkShizukuAvailability()
-        analyticsManager.logEvent(AnalyticsManager.EVENT_SHIZUKU_SETUP, mapOf("manual_check" to true))
+        startForeground(NOTIFICATION_ID, createNotification())
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == ACTION_TOGGLE) {
-            toggleCafeMode()
-        }
-        if (!isServiceRunning) {
-            startForeground(NOTIFICATION_ID, createNotification())
-            isServiceRunning = true
+        intent?.action?.let { action ->
+            when (action) {
+                "START" -> startProcessing()
+                "STOP" -> stopProcessing()
+            }
         }
         return START_STICKY
     }
 
-    override fun onBind(intent: Intent?): IBinder = binder
-
-    override fun onDestroy() {
-        releaseAudioEffect()
-        releaseCafeModeDSP()
-        releaseGlobalAudioProcessing()
-        shizukuIntegration.cleanup()
-        super.onDestroy()
+    override fun onBind(intent: Intent): IBinder {
+        return binder
     }
 
-    private fun releaseCafeModeDSP() {
-        cafeModeDSP?.release()
-        cafeModeDSP = null
-        Log.i(TAG, "Sony Café Mode DSP released")
-    }
-
-    private fun releaseGlobalAudioProcessing() {
-        audioPolicyManager?.stopGlobalAudioInterception()
-        audioPolicyManager?.cleanup()
-        audioPolicyManager = null
-        Log.i(TAG, "Global audio processing released")
-    }
-
-    private fun setupAudioEffect() {
-        if (!shizukuIntegration.isPermissionGranted) return
-        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.MODIFY_AUDIO_SETTINGS) != PackageManager.PERMISSION_GRANTED) return
+    private fun startProcessing() {
+        if (isEnabled) return
 
         try {
-            // Setup global audio effect for system-wide processing
             setupGlobalAudioEffect()
+            isEnabled = true
+            _serviceState.postValue(ServiceState.RUNNING)
+            analyticsManager.logEvent("audio_processing_started")
+            userEngagementManager.recordSessionStart()
+            updateStatus()
         } catch (e: Exception) {
-            Log.e(TAG, "Error setting up global audio effect", e)
-            analyticsManager.trackCrash(e, "Global AudioEffect Setup")
-            // Fallback to app-specific effects
-            setupFallbackAudioEffect()
+            Log.e(TAG, "Failed to start audio processing", e)
+            _serviceState.postValue(ServiceState.ERROR)
+            analyticsManager.logError("start_processing_failed", e)
         }
     }
 
-    private fun setupGlobalAudioEffect() {
+    private fun stopProcessing() {
+        if (!isEnabled) return
+
         try {
-            audioEffect = AudioEffect.Builder()
-                .setEffectUuid(EFFECT_UUID_CAFETONE)
-                .setAudioSessionId(0) // Session 0 = GLOBAL
-                .build()
-
-            audioEffect?.let {
-                it.enabled = isEnabled
-                setAllParams()
-                Log.i(TAG, "Global AudioEffect enabled - processing ALL apps")
-            } ?: throw Exception("Failed to create global AudioEffect using Builder")
-
+            audioEffect?.release()
+            audioEffect = null
+            isEnabled = false
+            _serviceState.postValue(ServiceState.STOPPED)
+            analyticsManager.logEvent("audio_processing_stopped")
+            userEngagementManager.recordSessionEnd()
+            updateStatus()
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to create global AudioEffect", e)
-            throw e
-        }
-    }
-
-    private fun setupFallbackAudioEffect() {
-        try {
-            val descriptors = AudioEffect.queryEffects()
-            val cafeToneDescriptor = descriptors.find { it.uuid == EFFECT_UUID_CAFETONE }
-
-            val builder = AudioEffect.Builder()
-            if (cafeToneDescriptor != null) {
-                builder.setEffectUuid(cafeToneDescriptor.uuid)
-            } else {
-                builder.setEffectUuid(AudioEffect.EFFECT_TYPE_EQUALIZER)
-            }
-            audioEffect = builder.setAudioSessionId(0).build()
-
-            audioEffect?.let {
-                it.enabled = isEnabled
-                setAllParams()
-                Log.i(TAG, "Fallback AudioEffect created and configured")
-            } ?: Log.e(TAG, "Failed to create fallback AudioEffect")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error setting up fallback audio effect", e)
-            analyticsManager.trackCrash(e, "Fallback AudioEffect Setup")
+            Log.e(TAG, "Error stopping audio processing", e)
+            analyticsManager.logError("stop_processing_failed", e)
         }
     }
 
     @SuppressLint("DiscouragedPrivateApi")
     private fun createAudioEffect(type: UUID, uuid: UUID?): AudioEffect? {
-        // This reflection-based method is less stable. The Builder pattern is preferred.
         return try {
-            val constructor = AudioEffect::class.java.getConstructor(UUID::class.java, UUID::class.java, Int::class.javaPrimitiveType, Int::class.javaPrimitiveType)
-            constructor.newInstance(type, uuid ?: type, 0, 0)
-        } catch (e: Exception) {
-            null
-        }
-    }
+            // Try the most complete constructor first
+            val constructor = AudioEffect::class.java.getDeclaredConstructor(
+                UUID::class.java,
+                UUID::class.java,
+                Int::class.javaPrimitiveType,
+                Int::class.javaPrimitiveType,
+                Int::class.javaPrimitiveType,
+                String::class.java
+            )
 
-    private fun releaseAudioEffect() {
-        audioEffect?.release()
-        audioEffect = null
+            constructor.newInstance(
+                type,
+                uuid ?: type,
+                0,  // priority
+                0,  // audio session (0 = GLOBAL)
+                0,  // flags
+                applicationContext.packageName
+            ) as AudioEffect
+        } catch (e: Exception) {
+            Log.e(TAG, "Error creating AudioEffect with full constructor", e)
+            try {
+                // Fallback to simpler constructor
+                val simpleConstructor = AudioEffect::class.java.getDeclaredConstructor(
+                    UUID::class.java,
+                    UUID::class.java,
+                    Int::class.javaPrimitiveType,
+                    Int::class.javaPrimitiveType
+                )
+
+                simpleConstructor.newInstance(
+                    type,
+                    uuid ?: type,
+                    0,  // priority
+                    0   // audio session (0 = GLOBAL)
+                ) as AudioEffect
+            } catch (e2: Exception) {
+                Log.e(TAG, "Fallback AudioEffect creation failed", e2)
+                null
+            }
+        }
     }
 
     private fun setEffectParam(paramId: Int, value: Float) {
         audioEffect?.let { effect ->
             try {
-                if (!effect.hasControl()) return
-                val paramBuffer = ByteBuffer.allocate(4).order(ByteOrder.nativeOrder()).putInt(paramId).array()
-                val valueBuffer = ByteBuffer.allocate(4).order(ByteOrder.nativeOrder()).putFloat(value).array()
+                if (!effect.hasControl()) {
+                    Log.w(TAG, "Effect doesn't have control")
+                    return
+                }
 
-                effect.setParameter(paramBuffer, valueBuffer)
+                // Convert paramId and value to byte arrays
+                val paramBuffer = ByteBuffer.allocate(4).order(ByteOrder.nativeOrder())
+                    .putInt(paramId).array()
+                val valueBuffer = ByteBuffer.allocate(4).order(ByteOrder.nativeOrder())
+                    .putFloat(value).array()
+
+                // Use reflection to call setParameter
+                val method = AudioEffect::class.java.getMethod(
+                    "setParameter",
+                    Int::class.javaPrimitiveType,
+                    Int::class.javaPrimitiveType,
+                    ByteArray::class.java,
+                    ByteArray::class.java
+                )
+
+                // Try both method signatures
+                try {
+                    // Try with int parameters first
+                    method.invoke(effect, paramId, value.toInt())
+                } catch (e: Exception) {
+                    // Fall back to byte array parameters
+                    method.invoke(effect, paramBuffer, valueBuffer)
+                }
 
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to set parameter on AudioEffect", e)
             }
         }
 
+        // Update the DSP parameters
         cafeModeDSP?.let { dsp ->
             when (paramId) {
                 0 -> dsp.setIntensity(value)
@@ -305,103 +204,152 @@ class CafeModeService : Service() {
         }
     }
 
-    private fun setAllParams() {
-        setEffectParam(0, intensity)
-        setEffectParam(1, spatialWidth)
-        setEffectParam(2, distance)
-    }
+    private fun setupGlobalAudioEffect() {
+        try {
+            audioEffect = createAudioEffect(EFFECT_UUID_CAFETONE, EFFECT_UUID_CAFETONE)
+                ?: throw Exception("Failed to create custom audio effect")
 
-    fun toggleCafeMode() {
-        if (!shizukuIntegration.isPermissionGranted) return
-
-        val newIsEnabledState = !isEnabled
-        isEnabled = newIsEnabledState
-
-        audioEffect?.enabled = newIsEnabledState
-        cafeModeDSP?.setEnabled(newIsEnabledState)
-
-        updateStatus(isEnabled = newIsEnabledState)
-
-        if (newIsEnabledState) {
-            val milestoneReached = engagementManager.trackCafeModeUsage()
-            analyticsManager.trackCafeModeUsage(true, intensity, spatialWidth, distance)
-
-            if (milestoneReached) {
-                Log.i(TAG, "User reached a new milestone!")
+            audioEffect?.let {
+                it.enabled = isEnabled
+                setAllParams()
+                Log.i(TAG, "Global AudioEffect enabled - processing ALL apps")
             }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to create global AudioEffect", e)
+            setupFallbackAudioEffect()
         }
-
-        Log.i(TAG, "Sony Café Mode ${if (newIsEnabledState) "enabled" else "disabled"}")
     }
 
-    fun setIntensity(value: Float) {
-        intensity = value.coerceIn(0.0f, 1.0f)
-        setEffectParam(0, intensity)
-        analyticsManager.trackParameterChange("intensity", intensity)
-        Log.v(TAG, "Intensity set to: $intensity")
+    private fun setupFallbackAudioEffect() {
+        try {
+            val descriptors = AudioEffect.queryEffects()
+            val cafeToneDescriptor = descriptors.find { it.uuid == EFFECT_UUID_CAFETONE }
+
+            audioEffect = if (cafeToneDescriptor != null) {
+                createAudioEffect(cafeToneDescriptor.type, cafeToneDescriptor.uuid)
+            } else {
+                // Fallback to equalizer
+                createAudioEffect(
+                    AudioEffect.EFFECT_TYPE_EQUALIZER,
+                    AudioEffect.EFFECT_TYPE_EQUALIZER
+                )
+            }
+
+            audioEffect?.let {
+                it.enabled = isEnabled
+                setAllParams()
+                Log.i(TAG, "Fallback AudioEffect created and configured")
+            } ?: Log.e(TAG, "Failed to create fallback AudioEffect")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error setting up fallback audio effect", e)
+            analyticsManager.logError("fallback_effect_setup_failed", e)
+        }
     }
 
-    fun setSpatialWidth(value: Float) {
-        spatialWidth = value.coerceIn(0.0f, 1.0f)
-        setEffectParam(1, spatialWidth)
-        analyticsManager.trackParameterChange("spatial_width", spatialWidth)
-        Log.v(TAG, "Spatial width set to: $spatialWidth")
-    }
-
-    fun setDistance(value: Float) {
-        distance = value.coerceIn(0.0f, 1.0f)
-        setEffectParam(2, distance)
-        analyticsManager.trackParameterChange("distance", distance)
-        Log.v(TAG, "Distance set to: $distance")
-    }
-
-    fun getIntensity(): Float = intensity
-    fun getSpatialWidth(): Float = spatialWidth
-    fun getDistance(): Float = distance
-
-    fun getAnalyticsManager(): AnalyticsManager = analyticsManager
-    fun getEngagementManager(): UserEngagementManager = engagementManager
-    fun getPlayStoreIntegration(): PlayStoreIntegration = playStoreIntegration
-    fun getUpdateManager(): UpdateManager = updateManager
-    fun getCafeModeDSP(): CafeModeDSP? = cafeModeDSP
-
-    private fun updateStatus(isEnabled: Boolean = this.isEnabled) {
-        val shizukuMessage = shizukuIntegration.getStatusMessage()
-        val shizukuReady = shizukuIntegration.isPermissionGranted
-        _status.postValue(AppStatus(isEnabled, shizukuMessage, shizukuReady))
-        updateNotification()
+    private fun setAllParams() {
+        // Set all DSP parameters
+        cafeModeDSP?.let { dsp ->
+            setEffectParam(0, dsp.getIntensity())
+            setEffectParam(1, dsp.getSpatialWidth())
+            setEffectParam(2, dsp.getDistance())
+        }
     }
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(CHANNEL_ID, "Café Mode", NotificationManager.IMPORTANCE_LOW)
-            getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+            val serviceChannel = NotificationChannel(
+                CHANNEL_ID,
+                "Cafe Mode Service Channel",
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "Channel for Cafe Mode audio processing"
+            }
+
+            val notificationManager = getSystemService(NotificationManager::class.java)
+            notificationManager.createNotificationChannel(serviceChannel)
         }
     }
 
     private fun createNotification(): Notification {
-        val currentStatus = _status.value ?: AppStatus(false, "Initializing...", false)
-        val pIntent = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-        val pToggleIntent = PendingIntent.getService(this, 0, Intent(this, CafeModeService::class.java).apply { action = ACTION_TOGGLE }, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-
-        val statusText = when {
-            !currentStatus.isShizukuReady -> currentStatus.shizukuMessage
-            currentStatus.isEnabled -> "Sony Café Mode Active - Transforming Audio"
-            else -> "Tap to activate Sony Café Mode"
+        val pendingIntent = Intent(this, MainActivity::class.java).let { notificationIntent ->
+            PendingIntent.getActivity(this, 0, notificationIntent,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         }
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("CaféTone")
-            .setContentText(statusText)
-            .setSmallIcon(R.drawable.ic_cafe_mode)
-            .setContentIntent(pIntent)
-            .addAction(R.drawable.ic_toggle, if (currentStatus.isEnabled) "Disable" else "Enable", pToggleIntent)
-            .setOngoing(true).setSilent(true).build()
+            .setContentTitle("Cafe Mode")
+            .setContentText("Processing audio...")
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentIntent(pendingIntent)
+            .setOngoing(true)
+            .build()
     }
 
-    private fun updateNotification() {
-        if (isServiceRunning) {
-            getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, createNotification())
+    override fun onDestroy() {
+        stopProcessing()
+        super.onDestroy()
+    }
+
+    fun getAnalyticsManager(): AnalyticsManager = analyticsManager
+
+    fun getEngagementManager(): UserEngagementManager = userEngagementManager
+
+    fun getPlayStoreIntegration(): PlayStoreIntegration = playStoreIntegration
+
+    fun getUpdateManager(): UpdateManager = UpdateManager(this)
+
+    fun toggleCafeMode() {
+        if (isEnabled) {
+            stopProcessing()
+        } else {
+            startProcessing()
         }
+    }
+
+    fun setIntensity(value: Float) {
+        cafeModeDSP.setIntensity(value)
+        updateStatus()
+    }
+
+    fun setSpatialWidth(value: Float) {
+        cafeModeDSP.setSpatialWidth(value)
+        updateStatus()
+    }
+
+    fun setDistance(value: Float) {
+        cafeModeDSP.setDistance(value)
+        updateStatus()
+    }
+
+    fun forceShizukuCheck() {
+        // Implementation for Shizuku permission check
+        val hasPermission = checkShizukuPermission()
+        updateStatus(hasPermission)
+    }
+
+    private fun updateStatus(hasShizukuPermission: Boolean = _status.value?.isShizukuReady ?: false) {
+        val currentStatus = _status.value ?: AppStatus()
+        _status.postValue(
+            currentStatus.copy(
+                isEnabled = isEnabled,
+                isShizukuReady = hasShizukuPermission,
+                shizukuMessage = if (hasShizukuPermission) "" else "Shizuku permission required",
+                intensity = cafeModeDSP.getIntensity(),
+                spatialWidth = cafeModeDSP.getSpatialWidth(),
+                distance = cafeModeDSP.getDistance()
+            )
+        )
+    }
+
+    private fun checkShizukuPermission(): Boolean {
+        // Implementation for checking Shizuku permission
+        // Return true if permission is granted, false otherwise
+        return false
+    }
+
+    sealed class ServiceState {
+        object STOPPED : ServiceState()
+        object RUNNING : ServiceState()
+        object ERROR : ServiceState()
     }
 }

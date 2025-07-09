@@ -30,7 +30,7 @@ import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.analytics.ktx.analytics
 import com.google.firebase.analytics.ktx.logEvent
 import com.google.firebase.ktx.Firebase
-import com.cafetone.audio.BuildConfig // <-- FIX: Add missing import
+import com.cafetone.audio.BuildConfig
 
 class MainActivity : AppCompatActivity() {
 
@@ -134,8 +134,8 @@ class MainActivity : AppCompatActivity() {
 
         // Log app launch event
         firebaseAnalytics.logEvent("app_launch") {
-            param("version", BuildConfig.VERSION_NAME)
-            param("version_code", BuildConfig.VERSION_CODE.toLong())
+            param("version", packageManager.getPackageInfo(packageName, 0).versionName ?: "1.0")
+            param("version_code", packageManager.getPackageInfo(packageName, 0).versionCode.toLong())
         }
 
         Log.i(TAG, "MainActivity created")

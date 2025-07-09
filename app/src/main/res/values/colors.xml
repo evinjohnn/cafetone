@@ -1,9 +1,9 @@
-<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Material 3 Dynamic Colors -->
+    <!-- Material 3 Dynamic Colors - Light Theme -->
     <color name="md_theme_light_primary">#6F4E37</color>
     <color name="md_theme_light_onPrimary">#FFFFFF</color>
     <color name="md_theme_light_primaryContainer">#F7EDE7</color>
+
     <color name="md_theme_light_onPrimaryContainer">#2D1B0F</color>
     <color name="md_theme_light_secondary">#8B4513</color>
     <color name="md_theme_light_onSecondary">#FFFFFF</color>
@@ -29,8 +29,8 @@
     <color name="md_theme_light_inverseSurface">#313033</color>
     <color name="md_theme_light_inverseOnSurface">#F4EFF4</color>
     <color name="md_theme_light_inversePrimary">#D0BCFF</color>
-    
-    <!-- Dark Theme -->
+
+    <!-- Material 3 Dynamic Colors - Dark Theme -->
     <color name="md_theme_dark_primary">#D4A574</color>
     <color name="md_theme_dark_onPrimary">#3E2723</color>
     <color name="md_theme_dark_primaryContainer">#5D4037</color>
@@ -59,38 +59,32 @@
     <color name="md_theme_dark_inverseSurface">#E6E1E5</color>
     <color name="md_theme_dark_inverseOnSurface">#313033</color>
     <color name="md_theme_dark_inversePrimary">#6F4E37</color>
-    
-    <!-- Café Mode Special Colors -->
-    <color name="cafe_accent">#D4A574</color>
-    <color name="cafe_warm">#8B4513</color>
-    <color name="cafe_cream">#F7EDE7</color>
-    <color name="cafe_brown">#6F4E37</color>
-    <color name="cafe_gold">#FFD700</color>
-    
+
+    <!-- Café Mode Specific Colors -->
+    <color name="cafe_mode_background">#1E1E1E</color>
+    <color name="cafe_mode_surface">#2D2D2D</color>
+    <color name="cafe_mode_primary">#BB86FC</color>
+    <color name="cafe_mode_primary_variant">#3700B3</color>
+    <color name="cafe_mode_secondary">#03DAC6</color>
+    <color name="cafe_mode_error">#CF6679</color>
+    <color name="cafe_mode_on_primary">#000000</color>
+    <color name="cafe_mode_on_secondary">#000000</color>
+    <color name="cafe_mode_on_background">#E1E1E1</color>
+    <color name="cafe_mode_on_surface">#E1E1E1</color>
+    <color name="cafe_mode_on_error">#000000</color>
+
     <!-- Status Colors -->
-    <color name="green_500">#4CAF50</color>
-    <color name="green_700">#388E3C</color>
-    <color name="red_500">#F44336</color>
-    <color name="red_700">#D32F2F</color>
-    <color name="orange_500">#FF9800</color>
-    <color name="orange_700">#F57C00</color>
-    <color name="gray_500">#9E9E9E</color>
-    <color name="gray_700">#616161</color>
-    
-    <!-- Gradient Colors -->
-    <color name="gradient_start">#6F4E37</color>
-    <color name="gradient_end">#D4A574</color>
-    
-    <!-- Legacy Support -->
-    <color name="purple_200">#FFBB86FC</color>
-    <color name="purple_500">#FF6200EE</color>
-    <color name="purple_700">#FF3700B3</color>
-    <color name="teal_200">#FF03DAC5</color>
-    <color name="teal_700">#FF018786</color>
-    <color name="black">#FF000000</color>
+    <color name="status_active">#4CAF50</color>
+    <color name="status_inactive">#9E9E9E</color>
+    <color name="status_warning">#FFC107</color>
+    <color name="status_error">#F44336</color>
+
+    <!-- Common Colors -->
     <color name="white">#FFFFFFFF</color>
-    
-    <!-- Missing launcher icon colors -->
-    <color name="primary">@color/md_theme_light_primary</color>
-    <color name="on_primary">@color/md_theme_light_onPrimary</color>
+    <color name="black">#FF000000</color>
+    <color name="transparent">#00000000</color>
+    <color name="green_500">#4CAF50</color>
+    <color name="orange_500">#FF9800</color>
+    <color name="gray_500">#9E9E9E</color>
+    <color name="notification_color">#2196F3</color>
 </resources>
