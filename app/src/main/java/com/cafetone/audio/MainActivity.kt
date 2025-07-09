@@ -6,6 +6,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
+import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.content.SharedPreferences
 import android.net.Uri
@@ -77,6 +78,9 @@ class MainActivity : AppCompatActivity() {
             cafeModeService?.status?.observe(this@MainActivity, statusObserver)
             updateSliderUI()
 
+            // Check for first launch inside service connection to ensure managers are initialized
+            checkFirstLaunch()
+
             engagementManager?.showFirstTimeTutorial(this@MainActivity)
             updateManager?.checkForUpdates(this@MainActivity)
             playStoreIntegration?.requestReviewIfAppropriate(this@MainActivity)
@@ -107,17 +111,18 @@ class MainActivity : AppCompatActivity() {
         setupEventListeners()
         checkPermissions()
         handleNotificationIntent(intent)
-        checkFirstLaunch()
 
         val serviceIntent = Intent(this, CafeModeService::class.java)
         ContextCompat.startForegroundService(this, serviceIntent)
         bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE)
 
         try {
-            val packageInfo = packageManager.getPackageInfo(packageName, 0)
+            val pInfo = packageManager.getPackageInfo(packageName, 0)
+            val version = pInfo.versionName
+            val longVersionCode = PackageInfoCompat.getLongVersionCode(pInfo)
             firebaseAnalytics.logEvent("app_launch", bundleOf(
-                "version" to (packageInfo.versionName ?: "1.0"),
-                "version_code" to PackageInfoCompat.getLongVersionCode(packageInfo)
+                "version_name" to version,
+                "version_code" to longVersionCode
             ))
         } catch (e: PackageManager.NameNotFoundException) {
             Log.e(TAG, "Failed to get package info", e)
@@ -198,7 +203,8 @@ class MainActivity : AppCompatActivity() {
         if (sharedPreferences.getBoolean(KEY_FIRST_LAUNCH, true)) {
             showGitHubStarDialog()
             sharedPreferences.edit().putBoolean(KEY_FIRST_LAUNCH, false).apply()
-            firebaseAnalytics.logEvent(FirebaseAnalytics.Event.FIRST_LAUNCH, bundleOf("timestamp" to System.currentTimeMillis()))
+            // CORRECTED: Use the correct constant for the first open event.
+            firebaseAnalytics.logEvent(FirebaseAnalytics.Event.FIRST_OPEN, bundleOf("timestamp" to System.currentTimeMillis()))
         }
     }
 
@@ -283,8 +289,7 @@ class MainActivity : AppCompatActivity() {
             firebaseAnalytics.logEvent("settings_clicked", null)
             analyticsManager?.logEvent(AnalyticsManager.EVENT_SETTINGS_OPENED)
         }
-        
-        // Add diagnostic button functionality
+
         binding.btnRefreshStatus.setOnLongClickListener {
             runDiagnosticTest()
             true
@@ -293,113 +298,68 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateSliderUI() {
         cafeModeService?.let {
-            // Animate slider value changes
             val intensity = it.getIntensity() * 100
             val spatialWidth = it.getSpatialWidth() * 100
             val distance = it.getDistance() * 100
-            
-            // Update sliders with smooth animation
-            binding.sliderIntensity.animate()
-                .setDuration(200)
-                .withEndAction {
-                    binding.sliderIntensity.value = intensity
-                    updateIntensityLabel(intensity.toInt())
-                }
-                .start()
-                
-            binding.sliderSpatialWidth.animate()
-                .setDuration(200)
-                .withEndAction {
-                    binding.sliderSpatialWidth.value = spatialWidth
-                    updateSpatialWidthLabel(spatialWidth.toInt())
-                }
-                .start()
-                
-            binding.sliderDistance.animate()
-                .setDuration(200)
-                .withEndAction {
-                    binding.sliderDistance.value = distance
-                    updateDistanceLabel(distance.toInt())
-                }
-                .start()
+
+            binding.sliderIntensity.value = intensity
+            updateIntensityLabel(intensity.toInt())
+
+            binding.sliderSpatialWidth.value = spatialWidth
+            updateSpatialWidthLabel(spatialWidth.toInt())
+
+            binding.sliderDistance.value = distance
+            updateDistanceLabel(distance.toInt())
         }
     }
 
-    private fun updateIntensityLabel(value: Int) { 
+    private fun updateIntensityLabel(value: Int) {
         binding.tvIntensityValue.text = "$value%"
-        // Add subtle animation to value changes
         binding.tvIntensityValue.animate()
-            .scaleX(1.1f)
-            .scaleY(1.1f)
-            .setDuration(100)
+            .scaleX(1.1f).scaleY(1.1f).setDuration(100)
             .withEndAction {
                 binding.tvIntensityValue.animate()
-                    .scaleX(1f)
-                    .scaleY(1f)
-                    .setDuration(100)
-                    .start()
-            }
-            .start()
+                    .scaleX(1f).scaleY(1f).setDuration(100).start()
+            }.start()
     }
-    
-    private fun updateSpatialWidthLabel(value: Int) { 
+
+    private fun updateSpatialWidthLabel(value: Int) {
         binding.tvSpatialWidthValue.text = "$value%"
         binding.tvSpatialWidthValue.animate()
-            .scaleX(1.1f)
-            .scaleY(1.1f)
-            .setDuration(100)
+            .scaleX(1.1f).scaleY(1.1f).setDuration(100)
             .withEndAction {
                 binding.tvSpatialWidthValue.animate()
-                    .scaleX(1f)
-                    .scaleY(1f)
-                    .setDuration(100)
-                    .start()
-            }
-            .start()
+                    .scaleX(1f).scaleY(1f).setDuration(100).start()
+            }.start()
     }
-    
-    private fun updateDistanceLabel(value: Int) { 
+
+    private fun updateDistanceLabel(value: Int) {
         binding.tvDistanceValue.text = "$value%"
         binding.tvDistanceValue.animate()
-            .scaleX(1.1f)
-            .scaleY(1.1f)
-            .setDuration(100)
+            .scaleX(1.1f).scaleY(1.1f).setDuration(100)
             .withEndAction {
                 binding.tvDistanceValue.animate()
-                    .scaleX(1f)
-                    .scaleY(1f)
-                    .setDuration(100)
-                    .start()
-            }
-            .start()
+                    .scaleX(1f).scaleY(1f).setDuration(100).start()
+            }.start()
     }
 
     private fun updateStatusUI(status: AppStatus) {
-        // Animate status changes
         binding.tvStatus.animate()
-            .alpha(0f)
-            .setDuration(150)
+            .alpha(0f).setDuration(150)
             .withEndAction {
                 updateStatusContent(status)
-                binding.tvStatus.animate()
-                    .alpha(1f)
-                    .setDuration(150)
-                    .start()
-            }
-            .start()
-        
-        // Update toggle without animation interference
+                binding.tvStatus.animate().alpha(1f).setDuration(150).start()
+            }.start()
+
         binding.toggleCafeMode.isChecked = status.isEnabled
-        
-        // Handle refresh button visibility
         binding.btnRefreshStatus.visibility = if (status.isShizukuReady) View.GONE else View.VISIBLE
-        
-        // Show engagement tutorials based on status
+        binding.btnShizukuSetup.visibility = if (status.isShizukuReady) View.GONE else View.VISIBLE
+
         if (isBound && !status.isShizukuReady) {
             engagementManager?.showShizukuTutorial(this)
         }
     }
-    
+
     private fun updateStatusContent(status: AppStatus) {
         when {
             !status.isShizukuReady -> {
@@ -417,7 +377,7 @@ class MainActivity : AppCompatActivity() {
                 binding.ivStatusIcon.setImageResource(R.drawable.ic_cafe_active)
                 binding.ivStatusIcon.imageTintList = ColorStateList.valueOf(ContextCompat.getColor(this, R.color.status_success))
                 binding.tvStatusSubtitle.visibility = View.VISIBLE
-                binding.tvStatusSubtitle.text = "Audio processing enabled"
+                binding.tvStatusSubtitle.text = "Global audio processing enabled"
                 binding.tvStatusSubtitle.setTextColor(ContextCompat.getColor(this, R.color.status_success))
             }
             else -> {
@@ -438,7 +398,9 @@ class MainActivity : AppCompatActivity() {
             requiredPermissions.add(Manifest.permission.POST_NOTIFICATIONS)
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            requiredPermissions.add(Manifest.permission.FOREGROUND_SERVICE_MICROPHONE)
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                requiredPermissions.add(Manifest.permission.FOREGROUND_SERVICE_MICROPHONE)
+            }
         }
 
         val permissionsToRequest = requiredPermissions.filter {
@@ -525,31 +487,15 @@ class MainActivity : AppCompatActivity() {
 
     private fun runDiagnosticTest() {
         Toast.makeText(this, "Running CaféTone diagnostic tests...", Toast.LENGTH_SHORT).show()
-        
+
         Thread {
             val diagnostic = CafeToneDiagnostic(this)
             val result = diagnostic.runDiagnostics()
-            
+
             runOnUiThread {
                 AlertDialog.Builder(this)
                     .setTitle("CaféTone Diagnostic Results")
-                    .setMessage("""
-                        ${result.overallStatus}
-                        
-                        Test Results:
-                        ${if (result.shizukuAvailable) "✅" else "❌"} Shizuku Available
-                        ${if (result.shizukuPermissionGranted) "✅" else "❌"} Shizuku Permission Granted
-                        ${if (result.dspInitialized) "✅" else "❌"} DSP Initialized
-                        ${if (result.audioPermissionsGranted) "✅" else "❌"} Audio Permissions Granted
-                        
-                        ${when {
-                            !result.shizukuAvailable -> "Install Shizuku from Play Store and enable it in settings."
-                            !result.shizukuPermissionGranted -> "Grant Shizuku permission when prompted."
-                            !result.dspInitialized -> "DSP initialization failed - this may be expected in emulator."
-                            !result.audioPermissionsGranted -> "Audio permissions will be granted automatically via Shizuku."
-                            else -> "All systems ready! Try enabling Café Mode."
-                        }}
-                    """.trimIndent())
+                    .setMessage(result.toString())
                     .setPositiveButton("OK", null)
                     .show()
             }
@@ -583,7 +529,7 @@ class MainActivity : AppCompatActivity() {
                 
                 Test Results:
                 ${if (results.globalEffectCreation) "✅" else "❌"} Global AudioEffect Creation
-                ${if (results.effectRegistration) "✅" else "❌"} Effect Registration  
+                ${if (results.effectRegistration) "✅" else "❌"} Effect Registration
                 ${if (results.realTimeLatency) "✅" else "❌"} Real-Time Latency (<10ms)
                 ${if (results.streamInterception) "✅" else "❌"} Stream Interception
                 ${if (results.spotifyCompatibility) "✅" else "❌"} Spotify Compatibility

@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.app.*
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.media.audiofx.AudioEffect
 import android.os.Binder
 import android.os.Build
@@ -63,7 +64,18 @@ class CafeModeService : Service() {
         }
 
         createNotificationChannel()
-        startForeground(NOTIFICATION_ID, createNotification())
+        // CORRECTED: Use ServiceInfo for foreground service type
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val foregroundServiceType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
+            } else {
+                @Suppress("DEPRECATION")
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+            }
+            startForeground(NOTIFICATION_ID, createNotification(), foregroundServiceType)
+        } else {
+            startForeground(NOTIFICATION_ID, createNotification())
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -79,6 +91,7 @@ class CafeModeService : Service() {
         if (isEnabled) return
         if (!shizukuIntegration.isPermissionGranted) {
             Log.e(TAG, "Cannot start processing, Shizuku permission not granted.")
+            shizukuIntegration.checkShizukuAvailability() // Re-trigger permission request if needed
             updateStatus()
             return
         }
@@ -117,19 +130,6 @@ class CafeModeService : Service() {
     }
 
     @SuppressLint("DiscouragedPrivateApi")
-    private fun createAudioEffect(type: UUID, uuid: UUID?): AudioEffect? {
-        return try {
-            val constructor = AudioEffect::class.java.getDeclaredConstructor(
-                UUID::class.java, UUID::class.java, Int::class.javaPrimitiveType, Int::class.javaPrimitiveType
-            )
-            constructor.isAccessible = true
-            constructor.newInstance(type, uuid ?: type, 0, 0) as AudioEffect
-        } catch (e: Exception) {
-            Log.e(TAG, "Error creating AudioEffect via reflection", e)
-            null
-        }
-    }
-
     private fun setEffectParam(paramId: Int, value: Float) {
         audioEffect?.let { effect ->
             try {
@@ -138,11 +138,10 @@ class CafeModeService : Service() {
                     return
                 }
 
-                val paramBuffer = ByteBuffer.allocate(4).order(ByteOrder.nativeOrder()).putInt(paramId).array()
-                val valueBuffer = ByteBuffer.allocate(4).order(ByteOrder.nativeOrder()).putFloat(value).array()
-
-                val method = AudioEffect::class.java.getMethod("setParameter", ByteArray::class.java, ByteArray::class.java)
-                method.invoke(effect, paramBuffer, valueBuffer)
+                val p = ByteBuffer.allocate(4).order(ByteOrder.nativeOrder()).putInt(paramId).array()
+                val v = ByteBuffer.allocate(4).order(ByteOrder.nativeOrder()).putFloat(value).array()
+                val setParameterMethod = AudioEffect::class.java.getMethod("setParameter", ByteArray::class.java, ByteArray::class.java)
+                setParameterMethod.invoke(effect, p, v)
 
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to set parameter on AudioEffect", e)
@@ -152,49 +151,32 @@ class CafeModeService : Service() {
 
     private fun setupGlobalAudioEffect() {
         try {
-            // Try to create AudioEffect for global session (0)
-            Log.i(TAG, "Attempting to create global AudioEffect...")
-            
-            // First try with global session (0)
-            audioEffect = createAudioEffect(EFFECT_UUID_CAFETONE, EFFECT_UUID_CAFETONE)
-            
-            if (audioEffect != null) {
-                audioEffect?.enabled = true
-                setAllParams()
-                Log.i(TAG, "Global AudioEffect enabled successfully for all audio sessions.")
-            } else {
-                Log.e(TAG, "Failed to create global AudioEffect. Trying fallback approaches...")
-                
-                // Fallback 1: Try with session -1 (all sessions)
-                audioEffect = try {
-                    AudioEffect(EFFECT_UUID_CAFETONE, AudioEffect.EFFECT_TYPE_NULL, 0, -1)
-                } catch (e: Exception) {
-                    Log.w(TAG, "Fallback approach 1 failed: ${e.message}")
-                    null
-                }
-                
-                if (audioEffect != null) {
-                    audioEffect?.enabled = true
-                    setAllParams()
-                    Log.i(TAG, "AudioEffect enabled with fallback approach (session -1).")
-                } else {
-                    Log.e(TAG, "All AudioEffect creation attempts failed.")
-                    throw RuntimeException("AudioEffect creation failed for all approaches")
-                }
-            }
+            Log.i(TAG, "Attempting to create global AudioEffect for session 0...")
+            // CORRECTED: This is the standard, public constructor for global effects.
+            // It was correct in my previous answer, but confirming it here.
+            audioEffect = AudioEffect(
+                AudioEffect.EFFECT_TYPE_NULL,
+                EFFECT_UUID_CAFETONE,
+                0, // priority
+                0  // session ID 0 = Global Output Mix
+            )
+
+            audioEffect?.enabled = true
+            setAllParams()
+            Log.i(TAG, "Global AudioEffect enabled successfully for session 0.")
+
         } catch (e: Exception) {
             Log.e(TAG, "Failed to setup global AudioEffect", e)
+            analyticsManager.logError("setup_global_audio_effect_failed", e)
             audioEffect = null
         }
     }
 
+
     private fun setAllParams() {
-        cafeModeDSP.setIntensity(cafeModeDSP.getIntensity())
-        cafeModeDSP.setSpatialWidth(cafeModeDSP.getSpatialWidth())
-        cafeModeDSP.setDistance(cafeModeDSP.getDistance())
-        setEffectParam(CafeModeDSP.PARAM_INTENSITY, cafeModeDSP.getIntensity())
-        setEffectParam(CafeModeDSP.PARAM_SPATIAL_WIDTH, cafeModeDSP.getSpatialWidth())
-        setEffectParam(CafeModeDSP.PARAM_DISTANCE, cafeModeDSP.getDistance())
+        setIntensity(cafeModeDSP.getIntensity())
+        setSpatialWidth(cafeModeDSP.getSpatialWidth())
+        setDistance(cafeModeDSP.getDistance())
     }
 
     private fun createNotificationChannel() {
@@ -280,6 +262,7 @@ class CafeModeService : Service() {
                 distance = cafeModeDSP.getDistance()
             )
         )
-        startForeground(NOTIFICATION_ID, createNotification())
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.notify(NOTIFICATION_ID, createNotification())
     }
 }

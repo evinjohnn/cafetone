@@ -2,13 +2,16 @@ plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
     id 'com.google.gms.google-services'
-    id 'com.google.firebase.crashlytics' // <-- ADD THIS LINE
+    id 'com.google.firebase.crashlytics'
 }
 
 android {
     namespace 'com.cafetone.audio'
+    // Target a recent, stable SDK
     compileSdk 34
-    ndkVersion "27.0.12077973"
+    // Use a recent, stable NDK version
+    ndkVersion "26.1.10909125"
+
     defaultConfig {
         applicationId "com.cafetone.audio"
         minSdk 24

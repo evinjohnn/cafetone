@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<audio_effects_conf version="2.0">
+    <libraries>
+        <library name="cafetone" path="libcafetone-dsp.so"/>
+    </libraries>
+    
+    <effects>
+        <effect name="sony_cafe_mode" 
+                library="cafetone" 
+                uuid="87654321-4321-8765-4321-fedcba098765"
+                type="87654321-4321-8765-4321-fedcba098765"
+                apiVersion="2"
+                libraryVersion="1.0"
+                description="Sony Café Mode DSP"/>
+    </effects>
+    
+    <!-- Apply to ALL audio streams globally -->
+    <postprocess>
+        <stream type="music">
+            <apply effect="sony_cafe_mode"/>
+        </stream>
+        <stream type="voice_call">
+            <apply effect="sony_cafe_mode"/>
+        </stream>
+        <stream type="system">
+            <apply effect="sony_cafe_mode"/>
+        </stream>
+        <stream type="notification">
+            <apply effect="sony_cafe_mode"/>
+        </stream>
+        <stream type="alarm">
+            <apply effect="sony_cafe_mode"/>
+        </stream>
+        <stream type="ring">
+            <apply effect="sony_cafe_mode"/>
+        </stream>
+        <stream type="media">
+            <apply effect="sony_cafe_mode"/>
+        </stream>
+        <stream type="dtmf">
+            <apply effect="sony_cafe_mode"/>
+        </stream>
+    </postprocess>
+</audio_effects_conf>

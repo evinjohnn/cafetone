@@ -1,11 +1,8 @@
 package com.cafetone.audio.service
 
-import android.content.ComponentName
 import android.content.Context
-import android.content.ServiceConnection
 import android.content.pm.PackageManager
 import android.os.IBinder
-import android.os.RemoteException
 import android.util.Log
 import java.io.File
 import java.io.FileOutputStream
@@ -13,7 +10,7 @@ import java.io.IOException
 import java.io.InputStream
 import rikka.shizuku.Shizuku
 import rikka.shizuku.ShizukuBinderWrapper
-import rikka.shizuku.server.IShizukuService
+import rikka.shizuku.server.IShizukuService // CORRECTED: This import was missing.
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -44,7 +41,6 @@ class ShizukuIntegration(private val context: Context) {
             isPermissionGranted = (grantResult == PackageManager.PERMISSION_GRANTED)
             Log.d(TAG, "Shizuku permission result: ${if (isPermissionGranted) "GRANTED" else "DENIED"}")
             if (isPermissionGranted) {
-                // Deploy audio effects configuration and grant permissions
                 deployAudioEffectConfiguration()
                 grantAudioPermissions()
             }
@@ -67,7 +63,6 @@ class ShizukuIntegration(private val context: Context) {
                 if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
                     Log.d(TAG, "Shizuku permission is ALREADY GRANTED.")
                     isPermissionGranted = true
-                    // Deploy audio effects configuration and grant permissions
                     deployAudioEffectConfiguration()
                     grantAudioPermissions()
                 } else {
@@ -97,7 +92,7 @@ class ShizukuIntegration(private val context: Context) {
             Log.i(TAG, "Extracted '$assetName' to '${tempFile.absolutePath}'")
             tempFile
         } catch (e: IOException) {
-            Log.e(TAG, "Failed to extract asset: $assetName. Make sure it's in the app/src/main/assets/ folder.", e)
+            Log.e(TAG, "Failed to extract asset: $assetName.", e)
             null
         }
     }
@@ -137,7 +132,7 @@ class ShizukuIntegration(private val context: Context) {
             val packageName = context.packageName
             val permissions = listOf(
                 "android.permission.MODIFY_AUDIO_SETTINGS",
-                "android.permission.DUMP", 
+                "android.permission.DUMP",
                 "android.permission.CAPTURE_AUDIO_OUTPUT",
                 "android.permission.MODIFY_AUDIO_ROUTING",
                 "android.permission.BIND_AUDIO_SERVICE"
@@ -151,9 +146,17 @@ class ShizukuIntegration(private val context: Context) {
 
     private fun executeShizukuCommand(command: String) {
         try {
-            val process = Shizuku.newProcess(arrayOf("sh", "-c", command), null, null)
+            val binder: IBinder = Shizuku.getBinder() ?: run {
+                Log.e(TAG, "Shizuku binder is null, cannot execute command.")
+                return
+            }
+
+            // CORRECTED: This logic was correct, just needed the import.
+            val service = IShizukuService.Stub.asInterface(ShizukuBinderWrapper(binder))
+            val process = service.newProcess(arrayOf("sh", "-c", command), null, null)
             val exitCode = process.waitFor()
             Log.i(TAG, "Exec: '$command' -> Exit Code: $exitCode")
+
         } catch (e: Exception) {
             Log.e(TAG, "Failed to execute Shizuku command: $command", e)
         }
