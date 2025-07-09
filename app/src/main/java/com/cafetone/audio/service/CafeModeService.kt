@@ -1,6 +1,11 @@
 package com.cafetone.audio.service
 
-import android.app.*
+import android.app.Activity
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.app.Service
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -111,6 +116,7 @@ class CafeModeService : Service() {
             val serviceArgs = Shizuku.UserServiceArgs(componentName)
                 .tag(PRIVILEGED_SERVICE_TAG)
                 .daemon(false)
+
             Shizuku.bindUserService(serviceArgs, privilegedServiceConnection)
             Log.i(TAG, "Attempting to bind to PrivilegedAudioService...")
         } catch (e: Exception) {
@@ -160,9 +166,9 @@ class CafeModeService : Service() {
     }
 
     private fun setAllParams() {
-        setIntensity(cafeModeDSP.getIntensity())
-        setSpatialWidth(cafeModeDSP.getSpatialWidth())
-        setDistance(cafeModeDSP.getDistance())
+        privilegedService?.setParameter(CafeModeDSP.PARAM_INTENSITY, cafeModeDSP.getIntensity())
+        privilegedService?.setParameter(CafeModeDSP.PARAM_SPATIAL_WIDTH, cafeModeDSP.getSpatialWidth())
+        privilegedService?.setParameter(CafeModeDSP.PARAM_DISTANCE, cafeModeDSP.getDistance())
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -227,7 +233,7 @@ class CafeModeService : Service() {
                 }
             } else {
                 Log.e(TAG, "Cannot toggle on, Shizuku permission not granted.")
-                shizukuIntegration.checkShizukuAvailability() // Prompt for permission again
+                shizukuIntegration.checkShizukuAvailability()
             }
         }
         updateStatus()

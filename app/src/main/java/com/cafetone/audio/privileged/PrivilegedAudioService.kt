@@ -6,7 +6,7 @@ import android.media.audiofx.AudioEffect
 import android.os.IBinder
 import android.os.RemoteException
 import android.util.Log
-import rikka.shizuku.api.service.ShizukuService
+import rikka.shizuku.api.ShizukuService // <<< THIS IS THE CORRECTED IMPORT
 import java.lang.reflect.Field
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -104,7 +104,7 @@ class PrivilegedAudioService : ShizukuService() {
             try {
                 if (!effect.hasControl()) {
                     Log.w(TAG, "Effect doesn't have control, cannot set parameter.")
-                    return
+                    return@let
                 }
                 val p = ByteBuffer.allocate(4).order(ByteOrder.nativeOrder()).putInt(paramId).array()
                 val v = ByteBuffer.allocate(4).order(ByteOrder.nativeOrder()).putFloat(value).array()
