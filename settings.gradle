@@ -11,7 +11,8 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        maven { url 'https://jitpack.io' }
+        // CRITICAL FIX: Removed all custom/JitPack repositories.
+        // The official Shizuku artifacts are on Maven Central.
     }
 }
 

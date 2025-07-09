@@ -3,8 +3,7 @@ plugins {
     id 'org.jetbrains.kotlin.android'
     id 'com.google.gms.google-services'
     id 'com.google.firebase.crashlytics'
-    id 'kotlin-kapt' // Keep this
-    // REMOVE THE INVALID PLUGIN LINE
+    id 'kotlin-kapt'
 }
 
 android {
@@ -68,10 +67,10 @@ dependencies {
     implementation 'androidx.fragment:fragment-ktx:1.8.4'
     implementation 'androidx.work:work-runtime-ktx:2.9.1'
 
-    // Shizuku API for elevated permissions
-    // CRITICAL FIX: Revert to a simpler, more robust dependency declaration.
-    implementation 'dev.rikka.shizuku:api:13.1.5'
-    implementation 'dev.rikka.shizuku:provider:13.1.5'
+    // CRITICAL FIX: Using the official Shizuku dependencies from Maven Central as per the documentation.
+    def shizuku_version = "13.1.5"
+    implementation "dev.rikka.shizuku:api:$shizuku_version"
+    implementation "dev.rikka.shizuku:provider:$shizuku_version"
 
     // Coroutines for async operations
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'

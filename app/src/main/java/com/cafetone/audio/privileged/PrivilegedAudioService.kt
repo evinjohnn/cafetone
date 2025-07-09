@@ -1,18 +1,19 @@
 package com.cafetone.audio.privileged
 
 import android.annotation.SuppressLint
+import android.app.Service // CRITICAL FIX: Import the standard Android Service
 import android.content.Intent
 import android.media.audiofx.AudioEffect
 import android.os.IBinder
-import android.os.RemoteException
 import android.util.Log
-import rikka.shizuku.api.ShizukuService // <<< THIS IS THE CORRECTED IMPORT
 import java.lang.reflect.Field
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.UUID
 
-class PrivilegedAudioService : ShizukuService() {
+// CRITICAL FIX: The service must extend the standard android.app.Service.
+// Shizuku will start this standard service inside its own privileged process.
+class PrivilegedAudioService : Service() {
 
     companion object {
         private const val TAG = "PrivilegedAudioService"
@@ -137,12 +138,7 @@ class PrivilegedAudioService : ShizukuService() {
         Log.i(TAG, "PrivilegedAudioService is being destroyed.")
         release()
         super.onDestroy()
+        // The process will be killed by Shizuku, but we can request an exit.
         System.exit(0)
-    }
-
-    @Throws(RemoteException::class)
-    override fun destroy() {
-        super.destroy()
-        onDestroy()
     }
 }
