@@ -33,14 +33,19 @@ class ShizukuIntegration(private val context: Context, private val onPermissionR
     }
 
     init {
+        // FIX: The constructor should ONLY set up listeners.
+        // It should NOT perform any actions that trigger callbacks, which caused the crash.
         Shizuku.addBinderDeadListener(binderDeadRecipient)
         Shizuku.addRequestPermissionResultListener(permissionRequestListener)
-        checkShizukuAvailability()
+        Log.d(TAG, "ShizukuIntegration initialized and listeners are attached.")
+        // The call to checkShizukuAvailability() is REMOVED from the constructor.
     }
 
     fun checkShizukuAvailability() {
+        Log.d(TAG, "Checking Shizuku availability...")
         try {
             if (Shizuku.isPreV11() || Shizuku.getVersion() < 11) {
+                Log.w(TAG, "Shizuku version is too old or not supported.")
                 isShizukuAvailable = false
                 isPermissionGranted = false
                 onPermissionResult(false)
@@ -49,26 +54,32 @@ class ShizukuIntegration(private val context: Context, private val onPermissionR
 
             isShizukuAvailable = Shizuku.pingBinder()
             if (isShizukuAvailable) {
+                Log.d(TAG, "Shizuku binder is alive.")
                 if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
                     if (!isPermissionGranted) {
+                        Log.i(TAG, "Shizuku permission already granted.")
                         isPermissionGranted = true
                         onPermissionResult(true)
                     }
                 } else {
+                    Log.i(TAG, "Shizuku permission not granted. Requesting...")
                     isPermissionGranted = false
+                    // This will trigger the listener we added in the init block.
                     Shizuku.requestPermission(SHIZUKU_PERMISSION_REQUEST_CODE)
                 }
             } else {
+                Log.w(TAG, "Shizuku is not available (ping failed).")
                 isPermissionGranted = false
                 onPermissionResult(false)
             }
         } catch (e: IllegalStateException) {
-            Log.e(TAG, "Shizuku binder not ready, will retry: ${e.message}")
+            // This is common if the Shizuku app is not running.
+            Log.e(TAG, "Shizuku binder not ready: ${e.message}")
             isShizukuAvailable = false
             isPermissionGranted = false
             onPermissionResult(false)
         } catch (e: Exception) {
-            Log.e(TAG, "Error checking Shizuku availability", e)
+            Log.e(TAG, "An unexpected error occurred while checking Shizuku availability", e)
             isShizukuAvailable = false
             isPermissionGranted = false
             onPermissionResult(false)

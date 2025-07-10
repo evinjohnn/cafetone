@@ -23,6 +23,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Observer
 import com.cafetone.audio.analytics.AnalyticsManager
 import com.cafetone.audio.databinding.ActivityMainBinding
+import com.cafetone.audio.engagement.EngagementStats
 import com.cafetone.audio.engagement.UserEngagementManager
 import com.cafetone.audio.playstore.PlayStoreIntegration
 import com.cafetone.audio.service.AppStatus
@@ -32,10 +33,10 @@ import com.cafetone.audio.update.UpdateManager
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.analytics.ktx.analytics
 import com.google.firebase.ktx.Firebase
-// GUARANTEED FIX: Add missing coroutine imports
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : AppCompatActivity() {
 
@@ -59,7 +60,9 @@ class MainActivity : AppCompatActivity() {
     private var updateManager: UpdateManager? = null
 
     private val statusObserver = Observer<AppStatus> { status ->
-        updateStatusUI(status)
+        runOnUiThread {
+            updateStatusUI(status)
+        }
     }
 
     private val serviceConnection = object : ServiceConnection {
@@ -67,7 +70,7 @@ class MainActivity : AppCompatActivity() {
             val binder = service as CafeModeService.LocalBinder
             cafeModeService = binder.getService()
             isBound = true
-            Log.i(TAG, "Service connected")
+            Log.i(TAG, "CafeModeService connected.")
 
             analyticsManager = cafeModeService?.getAnalyticsManager()
             engagementManager = cafeModeService?.getEngagementManager()
@@ -81,14 +84,14 @@ class MainActivity : AppCompatActivity() {
             updateManager?.checkForUpdates(this@MainActivity)
             playStoreIntegration?.requestReviewIfAppropriate(this@MainActivity)
 
-            Log.i(TAG, "Advanced features initialized")
+            Log.i(TAG, "Advanced features initialized from service.")
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
             cafeModeService?.status?.removeObserver(statusObserver)
             cafeModeService = null
             isBound = false
-            Log.i(TAG, "Service disconnected")
+            Log.w(TAG, "CafeModeService disconnected.")
         }
     }
 
@@ -105,8 +108,13 @@ class MainActivity : AppCompatActivity() {
         handleNotificationIntent(intent)
 
         val serviceIntent = Intent(this, CafeModeService::class.java)
-        ContextCompat.startForegroundService(this, serviceIntent)
-        bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE)
+        try {
+            ContextCompat.startForegroundService(this, serviceIntent)
+            bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to start or bind service", e)
+            Toast.makeText(this, "Error starting core service.", Toast.LENGTH_LONG).show()
+        }
     }
 
     override fun onResume() {
@@ -154,6 +162,7 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
         if (isBound) {
             unbindService(serviceConnection)
+            isBound = false
         }
     }
 
@@ -161,14 +170,15 @@ class MainActivity : AppCompatActivity() {
         if (sharedPreferences.getBoolean(KEY_FIRST_LAUNCH, true)) {
             showGitHubStarDialog()
             sharedPreferences.edit().putBoolean(KEY_FIRST_LAUNCH, false).apply()
-            firebaseAnalytics.logEvent("first_open", null)
+            // FIX: This line is removed. The `first_open` event is logged automatically by Firebase.
+            // Manually logging it is redundant and was causing the compilation error.
         }
     }
 
     private fun showGitHubStarDialog() {
         AlertDialog.Builder(this)
             .setTitle("Support CaféTone")
-            .setMessage("Enjoying the app? Please consider starring the project on GitHub.")
+            .setMessage("Enjoying the app? Please consider starring the project on GitHub to help it grow.")
             .setPositiveButton("Star on GitHub") { _, _ -> openGitHubUrl() }
             .setNegativeButton("Maybe Later", null)
             .setCancelable(false)
@@ -178,13 +188,14 @@ class MainActivity : AppCompatActivity() {
     private fun openGitHubUrl() {
         try {
             startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(GITHUB_URL)))
+            analyticsManager?.logEvent("github_star_clicked")
         } catch (e: Exception) {
             Toast.makeText(this, "Failed to open GitHub page", Toast.LENGTH_SHORT).show()
         }
     }
 
     private fun setupEventListeners() {
-        binding.toggleCafeMode.setOnCheckedChangeListener { _, isChecked ->
+        binding.toggleCafeMode.setOnCheckedChangeListener { _, _ ->
             if (binding.toggleCafeMode.isPressed) {
                 cafeModeService?.toggleCafeMode(this@MainActivity)
             }
@@ -208,6 +219,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
         binding.btnRefreshStatus.setOnClickListener {
+            Toast.makeText(this, "Refreshing Shizuku status...", Toast.LENGTH_SHORT).show()
             cafeModeService?.forceShizukuCheck()
         }
         binding.btnShizukuSetup.setOnClickListener {
@@ -252,15 +264,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateStatusUI(status: AppStatus) {
-        updateStatusContent(status)
         binding.toggleCafeMode.isChecked = status.isEnabled
-        binding.btnRefreshStatus.visibility = if (status.isShizukuReady) View.GONE else View.VISIBLE
-        binding.btnShizukuSetup.visibility = if (status.isShizukuReady) View.GONE else View.VISIBLE
-    }
+        val isShizukuProblem = !status.isShizukuReady
+        binding.btnRefreshStatus.visibility = if (isShizukuProblem) View.VISIBLE else View.GONE
+        binding.btnShizukuSetup.visibility = if (isShizukuProblem) View.VISIBLE else View.GONE
 
-    private fun updateStatusContent(status: AppStatus) {
         when {
-            !status.isShizukuReady -> {
+            isShizukuProblem -> {
                 binding.tvStatus.text = "Setup Required"
                 binding.tvStatus.setTextColor(ContextCompat.getColor(this, R.color.status_warning))
                 binding.ivStatusIcon.setImageResource(R.drawable.ic_warning)
@@ -301,7 +311,7 @@ class MainActivity : AppCompatActivity() {
         val dspInfo = cafeModeService?.getCafeModeDSP()?.getStatusInfo() ?: "DSP Not Available"
         AlertDialog.Builder(activity)
             .setTitle("About Sony Café Mode")
-            .setMessage("$dspInfo\n\nPerfect for background listening.")
+            .setMessage("$dspInfo\n\nPerfect for background listening when you need to stay aware of your surroundings.")
             .setPositiveButton("OK", null)
             .show()
     }
@@ -310,7 +320,7 @@ class MainActivity : AppCompatActivity() {
         val usageStats = analyticsManager?.getUsageStatistics()
         val engagementStats = engagementManager?.getEngagementStats()
         AlertDialog.Builder(activity)
-            .setTitle("CaféTone Settings")
+            .setTitle("CaféTone Stats")
             .setMessage("""
                 Usage Statistics:
                 • Total Launches: ${usageStats?.totalLaunches ?: "N/A"}
@@ -321,7 +331,7 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun getAchievementCount(stats: com.cafetone.audio.engagement.EngagementStats?): String {
+    private fun getAchievementCount(stats: EngagementStats?): String {
         if (stats == null) return "None yet"
         val achievements = mutableListOf<String>()
         if (stats.milestone5Uses) achievements.add("Enthusiast")
@@ -332,12 +342,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun runDiagnosticTest() {
         Toast.makeText(this, "Running diagnostic tests...", Toast.LENGTH_SHORT).show()
-        // Use CoroutineScope to run the test off the main thread
         CoroutineScope(Dispatchers.IO).launch {
             val diagnostic = CafeToneDiagnostic(this@MainActivity)
             val result = diagnostic.runDiagnostics()
-            // Switch back to the main thread to show the dialog
-            runOnUiThread {
+            withContext(Dispatchers.Main) {
                 AlertDialog.Builder(this@MainActivity)
                     .setTitle("Diagnostic Results")
                     .setMessage(result.toString())

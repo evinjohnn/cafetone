@@ -42,6 +42,8 @@ class CafeModeService : Service() {
     private var privilegedService: IPrivilegedAudioService? = null
     private var isPrivilegedServiceBound = false
 
+    private var privilegedServiceArgs: Shizuku.UserServiceArgs? = null
+
     private val _status = MutableLiveData<AppStatus>()
     val status: LiveData<AppStatus> = _status
 
@@ -54,23 +56,23 @@ class CafeModeService : Service() {
 
     private val privilegedServiceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-            Log.i(TAG, "PrivilegedAudioService connected.")
+            Log.i(TAG, "SUCCESS: PrivilegedAudioService connected.")
             isPrivilegedServiceBound = true
             privilegedService = IPrivilegedAudioService.Stub.asInterface(service)
             if (isEnabled) {
                 startProcessing()
             }
+            updateStatus()
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
-            Log.w(TAG, "PrivilegedAudioService disconnected.")
+            Log.w(TAG, "PrivilegedAudioService disconnected unexpectedly.")
             isPrivilegedServiceBound = false
             privilegedService = null
             if (isEnabled) {
-                stopProcessing()
-                isEnabled = false // Force off since service died
-                updateStatus()
+                isEnabled = false
             }
+            updateStatus()
         }
     }
 
@@ -80,21 +82,32 @@ class CafeModeService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        Log.i(TAG, "CafeModeService creating...")
+
+        // FIX: Initialize all properties first, in a clear order, to prevent race conditions.
         analyticsManager = AnalyticsManager(applicationContext)
         userEngagementManager = UserEngagementManager(applicationContext)
         playStoreIntegration = PlayStoreIntegration(applicationContext)
         updateManager = UpdateManager(applicationContext)
         cafeModeDSP = CafeModeDSP()
 
+        // Now, initialize shizukuIntegration. Its constructor will just attach listeners.
         shizukuIntegration = ShizukuIntegration(applicationContext) { isGranted ->
             if (isGranted) {
+                Log.i(TAG, "Callback: Shizuku permission granted. Binding privileged service.")
                 bindPrivilegedService()
             } else {
+                Log.w(TAG, "Callback: Shizuku permission not granted. Unbinding privileged service.")
                 unbindPrivilegedService()
             }
             updateStatus()
         }
 
+        // THE FIX: Now that `shizukuIntegration` is guaranteed to be initialized,
+        // we can safely call a method on it to trigger the first check.
+        shizukuIntegration.checkShizukuAvailability()
+
+        // The rest of the onCreate logic
         createNotificationChannel()
         val foregroundServiceType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
@@ -105,39 +118,50 @@ class CafeModeService : Service() {
         } else {
             startForeground(NOTIFICATION_ID, createNotification())
         }
+        Log.i(TAG, "CafeModeService created successfully.")
     }
 
     override fun onBind(intent: Intent): IBinder = binder
 
     private fun bindPrivilegedService() {
-        if (isPrivilegedServiceBound || !shizukuIntegration.isPermissionGranted) return
+        if (isPrivilegedServiceBound || !shizukuIntegration.isPermissionGranted) {
+            Log.w(TAG, "Skipping bind: Bound=$isPrivilegedServiceBound, Permission=${shizukuIntegration.isPermissionGranted}")
+            return
+        }
         try {
             val componentName = ComponentName(packageName, "com.cafetone.audio.privileged.PrivilegedAudioService")
+
             val serviceArgs = Shizuku.UserServiceArgs(componentName)
                 .tag(PRIVILEGED_SERVICE_TAG)
                 .daemon(false)
+                .processNameSuffix(":shizuku_service")
 
-            // CRITICAL FIX: Explicitly cast the connection to resolve ambiguity.
-            Shizuku.bindUserService(serviceArgs, privilegedServiceConnection as ServiceConnection)
+            this.privilegedServiceArgs = serviceArgs
+
+            Shizuku.bindUserService(serviceArgs, privilegedServiceConnection)
 
             Log.i(TAG, "Attempting to bind to PrivilegedAudioService...")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to bind privileged service", e)
+            analyticsManager.logError("bindPrivilegedService", e)
         }
     }
 
     private fun unbindPrivilegedService() {
-        if (isPrivilegedServiceBound) {
+        if (isPrivilegedServiceBound && privilegedServiceArgs != null) {
             try {
-                // Tell the remote service to destroy itself before we unbind
-                privilegedService?.destroy()
-                Shizuku.unbindUserService(privilegedServiceConnection, true)
+                privilegedService?.destroyService()
+                Shizuku.unbindUserService(privilegedServiceArgs!!, privilegedServiceConnection, true)
+
             } catch (e: Exception) {
                 Log.e(TAG, "Error unbinding privileged service", e)
+                analyticsManager.logError("unbindPrivilegedService", e)
+            } finally {
+                isPrivilegedServiceBound = false
+                privilegedService = null
+                privilegedServiceArgs = null
+                Log.i(TAG, "Unbound from PrivilegedAudioService.")
             }
-            isPrivilegedServiceBound = false
-            privilegedService = null
-            Log.i(TAG, "Unbound from PrivilegedAudioService.")
         }
     }
 
@@ -155,18 +179,23 @@ class CafeModeService : Service() {
             Log.i(TAG, "SUCCESS: Audio processing started via Privileged Service.")
         } catch (e: Exception) {
             Log.e(TAG, "ERROR: Failed to start processing via privileged service.", e)
+            analyticsManager.logError("startProcessing", e)
             isEnabled = false
         }
+        updateStatus()
     }
 
     private fun stopProcessing() {
         try {
             privilegedService?.setEnabled(false)
             privilegedService?.release()
+            Log.i(TAG, "Audio processing stopped via Privileged Service.")
         } catch (e: Exception) {
             Log.e(TAG, "Error stopping audio processing", e)
+            analyticsManager.logError("stopProcessing", e)
         }
         isEnabled = false
+        updateStatus()
     }
 
     private fun setAllParams() {
@@ -178,8 +207,8 @@ class CafeModeService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == "STOP") {
             stopProcessing()
-            updateStatus()
         }
+        shizukuIntegration.checkShizukuAvailability()
         return START_STICKY
     }
 
@@ -209,6 +238,7 @@ class CafeModeService : Service() {
     }
 
     override fun onDestroy() {
+        Log.w(TAG, "CafeModeService is being destroyed.")
         stopProcessing()
         unbindPrivilegedService()
         shizukuIntegration.cleanup()
@@ -240,7 +270,6 @@ class CafeModeService : Service() {
                 shizukuIntegration.checkShizukuAvailability()
             }
         }
-        updateStatus()
     }
 
     fun setIntensity(value: Float) {
@@ -266,17 +295,27 @@ class CafeModeService : Service() {
     }
 
     private fun updateStatus() {
+        // BEST PRACTICE: Ensure shizukuIntegration is initialized before using it.
+        if (!::shizukuIntegration.isInitialized) {
+            Log.w(TAG, "updateStatus called before shizukuIntegration is initialized. Skipping.")
+            return
+        }
+
         val currentStatus = _status.value ?: AppStatus()
-        _status.postValue(
-            currentStatus.copy(
-                isEnabled = isEnabled,
-                isShizukuReady = shizukuIntegration.isPermissionGranted,
-                shizukuMessage = shizukuIntegration.getStatusMessage(),
-                intensity = cafeModeDSP.getIntensity(),
-                spatialWidth = cafeModeDSP.getSpatialWidth(),
-                distance = cafeModeDSP.getDistance()
-            )
+        val newStatus = currentStatus.copy(
+            isEnabled = isEnabled && isPrivilegedServiceBound,
+            isShizukuReady = shizukuIntegration.isPermissionGranted,
+            shizukuMessage = shizukuIntegration.getStatusMessage(),
+            intensity = cafeModeDSP.getIntensity(),
+            spatialWidth = cafeModeDSP.getSpatialWidth(),
+            distance = cafeModeDSP.getDistance()
         )
+
+        if (_status.value != newStatus) {
+            _status.postValue(newStatus)
+            Log.d(TAG, "Status updated: $newStatus")
+        }
+
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.notify(NOTIFICATION_ID, createNotification())
     }

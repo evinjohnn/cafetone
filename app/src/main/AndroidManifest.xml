@@ -5,7 +5,8 @@
     <!-- Sony Café Mode Audio Processing Permissions -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
-    <uses-permission android:name="android.permission.DUMP" />
+    <uses-permission android:name="android.permission.DUMP"
+        tools:ignore="ProtectedPermissions" />
 
     <!-- Shizuku API permissions -->
     <uses-permission android:name="moe.shizuku.manager.permission.API_V23" />
@@ -14,14 +15,16 @@
     <uses-permission android:name="android.permission.INTERACT_ACROSS_USERS_FULL"
         tools:ignore="ProtectedPermissions" />
 
-    <!-- Global audio processing permissions -->
-    <uses-permission android:name="android.permission.CAPTURE_AUDIO_OUTPUT" />
-    <uses-permission android:name="android.permission.MODIFY_AUDIO_ROUTING" />
-    <uses-permission android:name="android.permission.BIND_AUDIO_SERVICE" />
+    <!-- Global audio processing permissions (granted via Shizuku) -->
+    <uses-permission android:name="android.permission.CAPTURE_AUDIO_OUTPUT"
+        tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_ROUTING"
+        tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.BIND_AUDIO_SERVICE"
+        tools:ignore="ProtectedPermissions" />
 
     <!-- Service Permissions -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_AUDIO_PROCESSING" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
@@ -63,7 +66,6 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- Handle audio routing intents -->
             <intent-filter>
                 <action android:name="android.media.AUDIO_BECOMING_NOISY" />
             </intent-filter>
@@ -84,17 +86,22 @@
             </intent-filter>
         </service>
 
-        <!-- Privileged Audio Service (from first manifest) -->
+        <!-- FIX: This is the critical fix. The service must declare itself as a Shizuku user service. -->
         <service
             android:name=".privileged.PrivilegedAudioService"
             android:exported="true"
-            tools:ignore="ExportedService">
+            android:permission="android.permission.MANAGE_USERS"
+            tools:ignore="ExportedService,ProtectedPermissions">
             <intent-filter>
                 <action android:name="com.cafetone.audio.privileged.PrivilegedAudioService" />
             </intent-filter>
+            <!-- FIX: This meta-data tag makes the service visible to the Shizuku Manager app. -->
+            <meta-data
+                android:name="rikka.shizuku.user_service"
+                android:value="true" />
         </service>
 
-        <!-- Command User Service -->
+        <!-- Command User Service (if needed for other shell commands) -->
         <service
             android:name=".service.CommandUserService"
             android:exported="true"
@@ -146,24 +153,10 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
-        <!-- Sony Café Mode Audio Effect Library -->
-        <meta-data
-            android:name="com.cafetone.audio.dsp.CafeModeDSP"
-            android:value="libcafetone-dsp.so" />
-
         <!-- System effect registration -->
         <meta-data
             android:name="android.media.effect"
             android:resource="@xml/audio_effects" />
-
-        <meta-data
-            android:name="android.media.effect.EFFECT_TYPE_EQUALIZER"
-            android:value="87654321-4321-8765-4321-fedcba098765" />
-
-        <!-- Play Store Integration -->
-        <meta-data
-            android:name="com.google.android.play.billingclient.version"
-            android:value="5.0.0" />
 
     </application>
 
